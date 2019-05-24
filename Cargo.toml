@@ -1,0 +1,7 @@
+[package]
+name = "rust-wavelet-trees"
+version = "0.1.0"
+authors = ["Alexander Hahn <43539214+halex97@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
