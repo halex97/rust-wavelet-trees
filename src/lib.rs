@@ -45,9 +45,9 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
                 // in the right child's sequence.
                 // Otherwise it should be a part of the left child's sequence.
                 if bitmap.get(i as u64) {
-                    left_sequence.push(sequence[i].clone());
-                } else {
                     right_sequence.push(sequence[i].clone());
+                } else {
+                    left_sequence.push(sequence[i].clone());
                 }
             }
 
@@ -85,9 +85,9 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
         } else {
             self.bitmap.as_ref().and_then(|bm: &RankSelect| -> Option<&T> {
                 if bm.get(i) {
-                    self.right_child.as_ref().and_then(|child| child.access(bm.rank_1(i).unwrap()))
+                    self.right_child.as_ref().and_then(|child| child.access(bm.rank_1(i).unwrap() - 1))
                 } else {
-                    self.left_child.as_ref().and_then(|child| child.access(bm.rank_0(i).unwrap()))
+                    self.left_child.as_ref().and_then(|child| child.access(bm.rank_0(i).unwrap() - 1))
                 }
             })
         }
@@ -156,6 +156,14 @@ mod tests {
         // The root of the wavelet tree should have two children.
         assert!(pwt.left_child.is_some());
         assert!(pwt.right_child.is_some());
+    }
+
+    #[test]
+    fn test_access_leaf() {
+        let pwt : PointerWaveletTree<char> = PointerWaveletTree::new(vec!['a','a','a'], vec!['a']);
+        assert_eq!(pwt.access(0), Some('a').as_ref());
+        assert_eq!(pwt.access(1), Some('a').as_ref());
+        assert_eq!(pwt.access(2), Some('a').as_ref());
     }
 
     #[test]
