@@ -10,28 +10,30 @@ pub struct PointerWaveletTree<T: PartialOrd + Clone> {
 impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
 
     /// Create a new wavelet tree
-    pub fn new(sequence: Vec<T>) -> PointerWaveletTree<T> {
+    pub fn new(sequence: Vec<T>, alphabet: Vec<T>) -> PointerWaveletTree<T> {
         if sequence.is_empty() {
             panic!("Wavelet trees cannot be created from empty sequences.");
         }
-
-        let first_symbol = &sequence[0];
+        if alphabet.is_empty() {
+            panic!("Wavelet trees cannot be created from an empty alphabet.");
+        }
 
         // If there is only one symbol in the alphabet of the sequence (i.e. all symbols in the sequence are equal),
         // a leaf should be created.
         // Otherwise we create a bitmap for the sequence and use it to create children.
 
-        if sequence.len() == 1 || sequence.iter().fold(true, |acc, x| acc && (x == first_symbol)) {
+        if alphabet.len() == 1 {
             // Return a leaf (= a wavelet tree with a label and without children)
             PointerWaveletTree {
                 bitmap: None,
-                label: Some(sequence[0].clone()),
+                label: Some(alphabet[0].clone()),
                 left_child: None,
                 right_child: None
             }
         } else {
             // Create the bitmap.
-            let bitmap = create_bitmap(&sequence);
+            let center_of_alphabet = alphabet.len()/2;
+            let bitmap = create_bitmap(&sequence, &alphabet[center_of_alphabet]);
 
             // Now we can split up the sequence of this wavelet tree in order to create the left and the right child.
             let mut left_sequence : Vec<T> = Vec::new();
@@ -56,13 +58,13 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
             if left_sequence.is_empty() {
                 left_child = None;
             } else {
-                left_child = Some(Box::new(PointerWaveletTree::new(left_sequence)));
+                left_child = Some(Box::new(PointerWaveletTree::new(left_sequence, alphabet[..center_of_alphabet].to_vec())));
             }
 
             if right_sequence.is_empty() {
                 right_child = None;
             } else {
-                right_child = Some(Box::new(PointerWaveletTree::new(right_sequence)));
+                right_child = Some(Box::new(PointerWaveletTree::new(right_sequence, alphabet[center_of_alphabet..].to_vec())));
             }
 
             // Putting everything together, create the wavelet tree that contains the created children
@@ -77,7 +79,7 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
 
 }
 
-fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>) -> RankSelect {
+fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>, mid_symbol: &T) -> RankSelect {
     unimplemented!()
 }
 
