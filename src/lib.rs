@@ -1,4 +1,5 @@
 use bio::data_structures::rank_select::RankSelect;
+use bv::BitVec;
 
 pub struct PointerWaveletTree<T: PartialOrd + Clone> {
     bitmap: Option<RankSelect>,
@@ -80,7 +81,13 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
 }
 
 fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>, mid_symbol: &T) -> RankSelect {
-    unimplemented!()
+    let mut bits : BitVec<u8> = BitVec::new();
+
+    for symbol in sequence.iter() {
+        bits.push(symbol < mid_symbol);
+    }
+
+    RankSelect::new(bits, 1)
 }
 
 
