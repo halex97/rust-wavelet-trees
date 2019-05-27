@@ -78,6 +78,25 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
         }
     }
 
+    /// Access element at index i
+    pub fn access(&self, i: u64) -> Option<&T> {
+        if self.is_leaf() {
+            self.label.as_ref()
+        } else {
+            self.bitmap.as_ref().and_then(|bm: &RankSelect| -> Option<&T> {
+                if bm.get(i) {
+                    self.right_child.as_ref().and_then(|child| child.access(bm.rank_1(i).unwrap()))
+                } else {
+                    self.left_child.as_ref().and_then(|child| child.access(bm.rank_0(i).unwrap()))
+                }
+            })
+        }
+    }
+
+    fn is_leaf(&self) -> bool {
+        self.left_child.is_none() && self.right_child.is_none()
+    }
+
 }
 
 fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>, mid_symbol: &T) -> RankSelect {
