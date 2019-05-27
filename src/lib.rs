@@ -103,7 +103,7 @@ fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>, mid_symbol: &T) -> RankSelect
     let mut bits : BitVec<u8> = BitVec::new();
 
     for symbol in sequence.iter() {
-        bits.push(symbol < mid_symbol);
+        bits.push(symbol >= mid_symbol);
     }
 
     RankSelect::new(bits, 1)
@@ -112,8 +112,77 @@ fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>, mid_symbol: &T) -> RankSelect
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use bv::bit_vec;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_pointer_wavelet_tree_new_leaf() {
+        let pwt : PointerWaveletTree<char> = PointerWaveletTree::new(vec!['a','a','a'], vec!['a']);
+
+        assert!(pwt.is_leaf());
+        assert_eq!(pwt.label, Some('a'));
+    }
+
+    #[test]
+    fn test_create_bitmap() {
+        let text = "alabar a la alabarda";
+        let sequence : Vec<char> = text.chars().collect();
+        let ref_symbol = 'd';
+
+        let bitmap = create_bitmap(&sequence, &ref_symbol);
+
+        let expected_bits = bit_vec![
+            false, true, false, false, 
+            false, true, false, false, 
+            false, true, false, false, 
+            false, true, false, false, 
+            false, true, true, false];
+        assert_eq!(bitmap.bits(), &expected_bits);
+    }
+
+    #[test]
+    fn test_pointer_wavelet_tree_new_has_children() {
+        let text = "alabar a la alabarda";
+        let alphabet = vec![' ','a','b','d','l','r'];
+        let pwt = PointerWaveletTree::new(text.chars().collect(), alphabet);
+
+        // The wavelet tree should not be a leaf and, therefore, have no label.
+        assert!(!pwt.is_leaf());
+        assert_eq!(pwt.label, None);
+
+        // The root of the wavelet tree should have a bitmap.
+        assert!(pwt.bitmap.is_some());
+
+        // The root of the wavelet tree should have two children.
+        assert!(pwt.left_child.is_some());
+        assert!(pwt.right_child.is_some());
+    }
+
+    #[test]
+    fn test_access() {
+        let text = "alabar a la alabarda";
+        let alphabet = vec![' ','a','b','d','l','r'];
+        let pwt = PointerWaveletTree::new(text.chars().collect(), alphabet);
+
+        assert_eq!(pwt.access(0), Some('a').as_ref());
+        assert_eq!(pwt.access(1), Some('l').as_ref());
+        assert_eq!(pwt.access(2), Some('a').as_ref());
+        assert_eq!(pwt.access(3), Some('b').as_ref());
+        assert_eq!(pwt.access(4), Some('a').as_ref());
+        assert_eq!(pwt.access(5), Some('r').as_ref());
+        assert_eq!(pwt.access(6), Some(' ').as_ref());
+        assert_eq!(pwt.access(7), Some('a').as_ref());
+        assert_eq!(pwt.access(8), Some(' ').as_ref());
+        assert_eq!(pwt.access(9), Some('l').as_ref());
+        assert_eq!(pwt.access(10), Some('a').as_ref());
+        assert_eq!(pwt.access(11), Some(' ').as_ref());
+        assert_eq!(pwt.access(12), Some('a').as_ref());
+        assert_eq!(pwt.access(13), Some('l').as_ref());
+        assert_eq!(pwt.access(14), Some('a').as_ref());
+        assert_eq!(pwt.access(15), Some('b').as_ref());
+        assert_eq!(pwt.access(16), Some('a').as_ref());
+        assert_eq!(pwt.access(17), Some('r').as_ref());
+        assert_eq!(pwt.access(18), Some('d').as_ref());
+        assert_eq!(pwt.access(19), Some('a').as_ref());
     }
 }
