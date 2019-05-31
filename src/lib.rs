@@ -78,6 +78,24 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
         }
     }
 
+    pub fn new_pointer(sequence: &Vec<T>, alphabet: &[T]) -> Option<Box<PointerWaveletTree<T>>> {
+
+        if sequence.is_empty() || (alphabet.len() <= 1) {
+            return Option::None;
+        }
+        
+        let center_of_alphabet = alphabet.len()/2;
+
+        Option::Some(Box::new(
+            PointerWaveletTree {
+                bitmap: Some(create_sequence_bitmap(sequence, alphabet, &alphabet[center_of_alphabet])),
+                label: None,
+                left_child: PointerWaveletTree::new_pointer(sequence, &alphabet[..center_of_alphabet]),
+                right_child: PointerWaveletTree::new_pointer(sequence, &alphabet[center_of_alphabet..])
+            }
+        ))
+    }
+
     /// Access element at index i
     pub fn access(&self, i: u64) -> Option<&T> {
         if self.is_leaf() {
@@ -104,6 +122,18 @@ fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>, mid_symbol: &T) -> RankSelect
 
     for symbol in sequence.iter() {
         bits.push(symbol >= mid_symbol);
+    }
+
+    RankSelect::new(bits, 1)
+}
+
+fn create_sequence_bitmap<T: PartialOrd>(sequence: &Vec<T>, alphabet: &[T], mid_symbol: &T) -> RankSelect {
+    let mut bits : BitVec<u8> = BitVec::new();
+
+    for symbol in sequence.iter() {
+        if alphabet.contains(symbol) {
+            bits.push(symbol >= mid_symbol);
+        }
     }
 
     RankSelect::new(bits, 1)
