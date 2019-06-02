@@ -24,6 +24,7 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
         // Create the root of the wavelet tree (which recursively creates all other nodes)
         let root = WaveletTreeNode::new(sequence, &alphabet);
 
+        // Return a new PointerWaveletTree containing the alphabet and the root of the tree
         PointerWaveletTree {
             alphabet,
             root
@@ -33,11 +34,15 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
     
     /// Access element at index i in the sequence
     pub fn access(&self, i: usize) -> Option<&T> {
+        // If the given index is larger than the size of the bitmap (i.e. if it is larger than the amout of symbols in
+        // the sequence), no symbol can be returned.
+        // Otherwise the access() function of WaveletTreeNode is called.
         if i as u64 >= self.root.bitmap.bits().len() {
             None
         } else {
+            // Find out the the alphabet index of the symbol, which is at position i in the sequence
             let index_in_alphabet = self.root.access(i as u64, 0, self.alphabet.len());
-
+            // If some index is returned, return the corresponding symbol
             index_in_alphabet.map(|index| &self.alphabet[index])
         }
     }
@@ -58,16 +63,19 @@ impl WaveletTreeNode {
             panic!("Wavelet trees cannot be created from an empty alphabet.");
         }
 
-        // Create the bitmap.
+        // Create the bitmap for this node.
         let bitmap = create_bitmap(sequence, alphabet);
 
+        // Split the alphabet into a left part and a right part.
         let center_of_alphabet = alphabet.len()/2;
         let left_alphabet = &alphabet[..center_of_alphabet];
         let right_alphabet = &alphabet[center_of_alphabet..];
-        
-        let left_child = Self::create_boxed_option(sequence, left_alphabet);
-        let right_child = Self::create_boxed_option(sequence, right_alphabet);
 
+        // Create left and right children to represent the corresponding subranges of the alphabet.
+        let left_child = Self::create_boxed_inner_node(sequence, left_alphabet);
+        let right_child = Self::create_boxed_inner_node(sequence, right_alphabet);
+
+        // Return a new WaveletTreeNode containing the created bitmap and children.
         WaveletTreeNode {
             bitmap,
             left_child,
@@ -75,7 +83,7 @@ impl WaveletTreeNode {
         }
     }
 
-    fn create_boxed_option <T: PartialOrd + Clone> (sequence: &[T], alphabet: &[T]) -> Option<Box<Self>> {
+    fn create_boxed_inner_node <T: PartialOrd + Clone> (sequence: &[T], alphabet: &[T]) -> Option<Box<Self>> {
         if sequence.len() <= 1 || alphabet.len() <= 1 {
             None
         } else {
@@ -156,14 +164,6 @@ mod tests {
         assert!(pwt.root.left_child.is_some());
         assert!(pwt.root.right_child.is_some());
     }
-
-    // #[test]
-    // fn test_access_leaf() {
-    //     let pwt : PointerWaveletTree<char> = PointerWaveletTree::new(vec!['a','a','a'], vec!['a']);
-    //     assert_eq!(pwt.access(0), Some('a').as_ref());
-    //     assert_eq!(pwt.access(1), Some('a').as_ref());
-    //     assert_eq!(pwt.access(2), Some('a').as_ref());
-    // }
 
     #[test]
     fn test_access_inside_range() {
