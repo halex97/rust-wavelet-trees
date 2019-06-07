@@ -47,8 +47,8 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
         }
     }
 
-    /// Returns the number of appearances of symbol x in the sequence up until position i
-    pub fn rank(&self, x: T, i: usize) -> i64 {
+    /// Returns the number of appearances of symbol c in the sequence up until position i
+    pub fn rank(&self, c: T, i: usize) -> Option<u64> {
         unimplemented!();
     }
 }
@@ -214,17 +214,17 @@ mod tests {
         let tree = PointerWaveletTree::from_sequence(sequence);
 
         // returns 0 before first appearance
-        assert_eq!(0, tree.rank('l', 0));
-        assert_eq!(0, tree.rank('b', 2));
-        assert_eq!(0, tree.rank(' ', 5));
-        assert_eq!(0, tree.rank('d', 18));
+        assert_eq!(Some(0), tree.rank('l', 0));
+        assert_eq!(Some(0), tree.rank('b', 2));
+        assert_eq!(Some(0), tree.rank(' ', 5));
+        assert_eq!(Some(0), tree.rank('d', 18));
 
         // returns 1 at exact position of first appearance
-        assert_eq!(1, tree.rank('a', 0));
-        assert_eq!(1, tree.rank('l', 1));
-        assert_eq!(1, tree.rank('b', 3));
-        assert_eq!(1, tree.rank(' ', 6));
-        assert_eq!(1, tree.rank('d', 19));
+        assert_eq!(Some(1), tree.rank('a', 0));
+        assert_eq!(Some(1), tree.rank('l', 1));
+        assert_eq!(Some(1), tree.rank('b', 3));
+        assert_eq!(Some(1), tree.rank(' ', 6));
+        assert_eq!(Some(1), tree.rank('d', 19));
     }
 
     #[test]
@@ -234,32 +234,26 @@ mod tests {
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerWaveletTree::from_sequence(sequence);
         
-        assert_eq!(1, tree.rank('a', 0));
-        assert_eq!(2, tree.rank('a', 2));
-        assert_eq!(3, tree.rank('a', 4));
-        assert_eq!(4, tree.rank('a', 7));
-        assert_eq!(5, tree.rank('a', 10));
-        assert_eq!(6, tree.rank('a', 12));
-        assert_eq!(7, tree.rank('a', 14));
-        assert_eq!(8, tree.rank('a', 16));
-        assert_eq!(9, tree.rank('a', 19));
+        assert_eq!(Some(1), tree.rank('a', 0));
+        assert_eq!(Some(2), tree.rank('a', 2));
+        assert_eq!(Some(3), tree.rank('a', 4));
+        assert_eq!(Some(4), tree.rank('a', 7));
+        assert_eq!(Some(5), tree.rank('a', 10));
+        assert_eq!(Some(6), tree.rank('a', 12));
+        assert_eq!(Some(7), tree.rank('a', 14));
+        assert_eq!(Some(8), tree.rank('a', 16));
+        assert_eq!(Some(9), tree.rank('a', 19));
     }
 
     #[test]
-    fn test_rank_out_of_range() {
+    fn test_rank_invalid_argument() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerWaveletTree::from_sequence(sequence);
         
-        assert_eq!(9, tree.rank('a', 20));
-    }
-
-    #[test]
-    fn test_rank_unknown_symbol() {
-        let text = "alabar a la alabarda";
-        let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerWaveletTree::from_sequence(sequence);
-        
-        assert_eq!(0, tree.rank('x', 19));
+        // out of range
+        assert_eq!(None, tree.rank('a', 20));
+        // unknown symbol
+        assert_eq!(None, tree.rank('x', 19));
     }
 }
