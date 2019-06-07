@@ -168,19 +168,15 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
             let mut mid;
             let mut next;
             while layer < bound / 2 {
-                println!("");
-                println!("{}", layer);
                 index = bound / 2 / layer;
                 last = 0;
                 while index <= bound/2 {
-                    print!("|");
                     next = Self::partition_sum(&partition, index);
                     mid = Self::partition_sum(&partition, index - bound / 4 / layer);
 
                     for symbol in sequence.iter() {
                         if symbol >= &alphabet[last] && symbol <= &alphabet[next - 1] {
                             bits.push(symbol >= &alphabet[mid - 1]);
-                            if symbol >= &alphabet[mid] { print!("1"); } else { print!("0"); };
                         }
                     }
 
@@ -190,30 +186,21 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
 
                 layer *= 2;
             }
-
-            println!("");
-            println!("{}", layer);
-
             let mut sum;
             for i in 0..partition.len() {
-                print!("|");
                 if partition[i] {
                     for symbol in sequence.iter() {
                         sum = Self::partition_sum(&partition, i+1);
-                        if (symbol >= &alphabet[sum - 2]) && (symbol <= &alphabet[sum - 1])
-                        {
+                        if (symbol >= &alphabet[sum - 2]) && (symbol <= &alphabet[sum - 1]) {
                             bits.push(symbol >= &alphabet[sum - 1]);
-                            if symbol >= &alphabet[sum - 1] { print!("1"); } else { print!("0"); };
                         }
                     }
                 }
                 else {
                     for symbol in sequence.iter() {
                         sum = Self::partition_sum(&partition, i+1);
-                        if symbol == &alphabet[sum - 2]
-                        {
+                        if symbol == &alphabet[sum - 2] {
                             bits.push(false);
-                            print!("0");
                         }
                     }
                 }
@@ -226,14 +213,9 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
     pub fn partition_alphabet(bound: usize, alphabetlen: usize) -> Vec<bool> {
         let mut part: Vec<bool> = Vec::new();
 
-        println!("Partition: {}", bound);
-
         for i in 0..bound/2 {
             part.push(i < (bound/2 + alphabetlen - bound));
-            if i < (bound/2 + alphabetlen - bound) { print!("1 "); } else { print!("0 "); };
         }
-
-        println!("");
 
         part
     }
@@ -358,31 +340,5 @@ mod tests {
         assert_eq!(pwt.access(17), Some('r').as_ref());
         assert_eq!(pwt.access(18), Some('d').as_ref());
         assert_eq!(pwt.access(19), Some('a').as_ref());
-    }
-
-    #[test]
-    fn test_pointerless_bitmap() {
-        let text = [1,5,2,4,5,7,4,1,4,3,6,8,9,4,3,3,0,6,3,5,3,8,9,0,1,7,5,3,6,5,1,2,3,6,7,3,4];
-        println!("0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,1,0,0,0,0,1,1,0,0");
-        println!("1,5,2,4,5,_,4,1,4,3,_,_,_,4,3,3,0,_,3,5,3,_,_,0,1,_,5,3,_,5,1,2,3,_,_,3,4");
-        let _pwt = PointerlessWaveletTree::from_sequence(&text);
-        println!("");
-    }
-
-    #[test]
-    fn test_pointerless_bitmap_2() {
-        let text = [0,1,0,4,2,0,3,0,4,2,1,2,3];
-        println!("0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,1,0,0,0,0,1,1,0,0");
-        let _pwt = PointerlessWaveletTree::from_sequence(&text);
-        println!("");
-    }
-
-    #[test]
-    fn test_pointerless_bitmap_3() {
-        let text = [1,5,2,4,5,7,4,1,4,3,6,8,9,4,3,3,0,6,3,5,3,8,9,0,1,7,5,3,6,5,1,2,3,6,7,3,4];
-        println!("0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,1,0,0,0,0,1,1,0,0");
-        println!("1,5,2,4,5,_,4,1,4,3,_,_,_,4,3,3,0,_,3,5,3,_,_,0,1,_,5,3,_,5,1,2,3,_,_,3,4");
-        let _pwt = PointerlessWaveletTree::from_sequence(&text);
-        println!("");
     }
 }
