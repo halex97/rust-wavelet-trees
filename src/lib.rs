@@ -83,7 +83,7 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
         if sequence.is_empty() || (alphabet.len() <= 1) {
             return Option::None;
         }
-        
+
         let center_of_alphabet = alphabet.len()/2;
 
         Option::Some(Box::new(
@@ -113,6 +113,142 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
 
     fn is_leaf(&self) -> bool {
         self.left_child.is_none() && self.right_child.is_none()
+    }
+
+}
+
+pub struct PointerlessWaveletTree<T: PartialOrd + Clone> {
+    alphabet: Vec<T>,
+    bitmap: Option<RankSelect>
+}
+
+impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
+
+    pub fn from_sequence(sequence: &[T]) -> Self {
+        // Create a vector for storing the alphabet of the sequence
+        let mut alphabet = Vec::new();
+
+        // Add all symbols from the sequence to the new alphabet vector
+        for symbol in sequence.iter() {
+            if !alphabet.contains(symbol) {
+                alphabet.push(symbol.clone());
+            }
+        }
+
+        // Sort the alphabet
+        alphabet.sort_by(|x,y| x.partial_cmp(y).unwrap());
+
+        let bitmap = Self::create_bits(sequence, &alphabet);
+
+        // Return a new PointerWaveletTree containing the alphabet and the root of the tree
+        PointerlessWaveletTree {
+            alphabet,
+            bitmap
+        }
+    }
+
+    /// Create new Pointerless Wavelet Tree
+    pub fn create_bits(sequence: &[T], alphabet: &[T]) -> Option<RankSelect> {
+        if sequence.is_empty() {
+            return Option::None;
+        }
+        else {
+            let mut bits: BitVec<u8> = BitVec::new();
+
+            let mut bound = 1;
+            while bound < alphabet.len() {
+                bound *= 2;
+            };
+
+            let partition = Self::partition_alphabet(bound, alphabet.len());
+
+            let mut layer = 1;
+            let mut index;
+            let mut last;
+            let mut mid;
+            let mut next;
+            while layer < bound / 2 {
+                println!("");
+                println!("{}", layer);
+                index = bound / 2 / layer;
+                last = 0;
+                while index <= bound/2 {
+                    print!("|");
+                    next = Self::partition_sum(&partition, index);
+                    mid = Self::partition_sum(&partition, index - bound / 4 / layer);
+
+                    for symbol in sequence.iter() {
+                        if symbol >= &alphabet[last] && symbol <= &alphabet[next - 1] {
+                            bits.push(symbol >= &alphabet[mid - 1]);
+                            if symbol >= &alphabet[mid] { print!("1"); } else { print!("0"); };
+                        }
+                    }
+
+                    last = next;
+                    index += bound / 2 / layer;
+                }
+
+                layer *= 2;
+            }
+
+            println!("");
+            println!("{}", layer);
+
+            let mut sum;
+            for i in 0..partition.len() {
+                print!("|");
+                if partition[i] {
+                    for symbol in sequence.iter() {
+                        sum = Self::partition_sum(&partition, i+1);
+                        if (symbol >= &alphabet[sum - 2]) && (symbol <= &alphabet[sum - 1])
+                        {
+                            bits.push(symbol >= &alphabet[sum - 1]);
+                            if symbol >= &alphabet[sum - 1] { print!("1"); } else { print!("0"); };
+                        }
+                    }
+                }
+                else {
+                    for symbol in sequence.iter() {
+                        sum = Self::partition_sum(&partition, i+1);
+                        if symbol == &alphabet[sum - 2]
+                        {
+                            bits.push(false);
+                            print!("0");
+                        }
+                    }
+                }
+            }
+
+            return Option::Some(RankSelect::new(bits, 1));
+        }
+    }
+
+    pub fn partition_alphabet(bound: usize, alphabetlen: usize) -> Vec<bool> {
+        let mut part: Vec<bool> = Vec::new();
+
+        println!("Partition: {}", bound);
+
+        for i in 0..bound/2 {
+            part.push(i < (bound/2 + alphabetlen - bound));
+            if i < (bound/2 + alphabetlen - bound) { print!("1 "); } else { print!("0 "); };
+        }
+
+        println!("");
+
+        part
+    }
+
+    pub fn partition_sum(partition: &Vec<bool>, index: usize) -> usize {
+        let mut sum = 0;
+        for i in 0..index {
+            if partition[i] {
+                sum += 2;
+            }
+            else {
+                sum += 1;
+            }
+        }
+        sum
     }
 
 }
@@ -222,5 +358,31 @@ mod tests {
         assert_eq!(pwt.access(17), Some('r').as_ref());
         assert_eq!(pwt.access(18), Some('d').as_ref());
         assert_eq!(pwt.access(19), Some('a').as_ref());
+    }
+
+    #[test]
+    fn test_pointerless_bitmap() {
+        let text = [1,5,2,4,5,7,4,1,4,3,6,8,9,4,3,3,0,6,3,5,3,8,9,0,1,7,5,3,6,5,1,2,3,6,7,3,4];
+        println!("0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,1,0,0,0,0,1,1,0,0");
+        println!("1,5,2,4,5,_,4,1,4,3,_,_,_,4,3,3,0,_,3,5,3,_,_,0,1,_,5,3,_,5,1,2,3,_,_,3,4");
+        let _pwt = PointerlessWaveletTree::from_sequence(&text);
+        println!("");
+    }
+
+    #[test]
+    fn test_pointerless_bitmap_2() {
+        let text = [0,1,0,4,2,0,3,0,4,2,1,2,3];
+        println!("0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,1,0,0,0,0,1,1,0,0");
+        let _pwt = PointerlessWaveletTree::from_sequence(&text);
+        println!("");
+    }
+
+    #[test]
+    fn test_pointerless_bitmap_3() {
+        let text = [1,5,2,4,5,7,4,1,4,3,6,8,9,4,3,3,0,6,3,5,3,8,9,0,1,7,5,3,6,5,1,2,3,6,7,3,4];
+        println!("0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,1,0,0,0,0,1,1,0,0");
+        println!("1,5,2,4,5,_,4,1,4,3,_,_,_,4,3,3,0,_,3,5,3,_,_,0,1,_,5,3,_,5,1,2,3,_,_,3,4");
+        let _pwt = PointerlessWaveletTree::from_sequence(&text);
+        println!("");
     }
 }
