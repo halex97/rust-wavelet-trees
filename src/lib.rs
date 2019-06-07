@@ -2,16 +2,60 @@ use bio::data_structures::rank_select::RankSelect;
 use bv::BitVec;
 
 pub struct PointerWaveletTree<T: PartialOrd + Clone> {
-    bitmap: Option<RankSelect>,
-    label: Option<T>,
-    left_child: Option<Box<PointerWaveletTree<T>>>,
-    right_child: Option<Box<PointerWaveletTree<T>>>
+    alphabet: Vec<T>,
+    root: WaveletTreeNode
 }
 
 impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
+    pub fn from_sequence(sequence: &[T]) -> Self {
+        // Create a vector for storing the alphabet of the sequence
+        let mut alphabet = Vec::new();
 
-    /// Create a new wavelet tree
-    pub fn new(sequence: Vec<T>, alphabet: Vec<T>) -> PointerWaveletTree<T> {
+        // Add all symbols from the sequence to the new alphabet vector
+        for symbol in sequence.iter() {
+            if !alphabet.contains(symbol) {
+                alphabet.push(symbol.clone());
+            }
+        }
+
+        // Sort the alphabet
+        alphabet.sort_by(|x,y| x.partial_cmp(y).unwrap());
+        
+        // Create the root of the wavelet tree (which recursively creates all other nodes)
+        let root = WaveletTreeNode::new(sequence, &alphabet);
+
+        // Return a new PointerWaveletTree containing the alphabet and the root of the tree
+        PointerWaveletTree {
+            alphabet,
+            root
+        }
+    }
+
+    
+    /// Access element at index i in the sequence
+    pub fn access(&self, i: usize) -> Option<&T> {
+        // If the given index is larger than the size of the bitmap (i.e. if it is larger than the amout of symbols in
+        // the sequence), no symbol can be returned.
+        // Otherwise the access() function of WaveletTreeNode is called.
+        if i as u64 >= self.root.bitmap.bits().len() {
+            None
+        } else {
+            // Find out the the alphabet index of the symbol, which is at position i in the sequence
+            let index_in_alphabet = self.root.access(i as u64, 0, self.alphabet.len());
+            // If some index is returned, return the corresponding symbol
+            index_in_alphabet.map(|index| &self.alphabet[index])
+        }
+    }
+}
+
+struct WaveletTreeNode {
+    bitmap: RankSelect,
+    left_child: Option<Box<WaveletTreeNode>>,
+    right_child: Option<Box<WaveletTreeNode>>
+}
+
+impl WaveletTreeNode {
+    fn new <T: PartialOrd + Clone> (sequence: &[T], alphabet: &[T]) -> Self {
         if sequence.is_empty() {
             panic!("Wavelet trees cannot be created from empty sequences.");
         }
@@ -19,102 +63,56 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
             panic!("Wavelet trees cannot be created from an empty alphabet.");
         }
 
-        // If there is only one symbol in the alphabet of the sequence (i.e. all symbols in the sequence are equal),
-        // a leaf should be created.
-        // Otherwise we create a bitmap for the sequence and use it to create children.
+        // Create the bitmap for this node.
+        let bitmap = create_bitmap(sequence, alphabet);
 
-        if alphabet.len() == 1 {
-            // Return a leaf (= a wavelet tree with a label and without children)
-            PointerWaveletTree {
-                bitmap: None,
-                label: Some(alphabet[0].clone()),
-                left_child: None,
-                right_child: None
-            }
-        } else {
-            // Create the bitmap.
-            let center_of_alphabet = alphabet.len()/2;
-            let bitmap = create_bitmap(&sequence, &alphabet[center_of_alphabet]);
-
-            // Now we can split up the sequence of this wavelet tree in order to create the left and the right child.
-            let mut left_sequence : Vec<T> = Vec::new();
-            let mut right_sequence : Vec<T> = Vec::new();
-
-            for i in 0..sequence.len() {
-                // If the bitmap contains a 1 at position i, the symbol of the sequence at position i should be
-                // in the right child's sequence.
-                // Otherwise it should be a part of the left child's sequence.
-                if bitmap.get(i as u64) {
-                    right_sequence.push(sequence[i].clone());
-                } else {
-                    left_sequence.push(sequence[i].clone());
-                }
-            }
-
-            // We can now recursively create the children of this wavelet tree.
-            // A child only needs to be created if it's corresponding sequence is not empty.
-            let left_child;
-            let right_child;
-
-            if left_sequence.is_empty() {
-                left_child = None;
-            } else {
-                left_child = Some(Box::new(PointerWaveletTree::new(left_sequence, alphabet[..center_of_alphabet].to_vec())));
-            }
-
-            if right_sequence.is_empty() {
-                right_child = None;
-            } else {
-                right_child = Some(Box::new(PointerWaveletTree::new(right_sequence, alphabet[center_of_alphabet..].to_vec())));
-            }
-
-            // Putting everything together, create the wavelet tree that contains the created children
-            PointerWaveletTree {
-                bitmap: Some(bitmap),
-                label: None,
-                left_child,
-                right_child
-            }
-        }
-    }
-
-    pub fn new_pointer(sequence: &Vec<T>, alphabet: &[T]) -> Option<Box<PointerWaveletTree<T>>> {
-
-        if sequence.is_empty() || (alphabet.len() <= 1) {
-            return Option::None;
-        }
-
+        // Split the alphabet into a left part and a right part.
         let center_of_alphabet = alphabet.len()/2;
+        let left_alphabet = &alphabet[..center_of_alphabet];
+        let right_alphabet = &alphabet[center_of_alphabet..];
 
-        Option::Some(Box::new(
-            PointerWaveletTree {
-                bitmap: Some(create_sequence_bitmap(sequence, alphabet, &alphabet[center_of_alphabet])),
-                label: None,
-                left_child: PointerWaveletTree::new_pointer(sequence, &alphabet[..center_of_alphabet]),
-                right_child: PointerWaveletTree::new_pointer(sequence, &alphabet[center_of_alphabet..])
-            }
-        ))
-    }
+        // Create left and right children to represent the corresponding subranges of the alphabet.
+        let left_child = Self::create_boxed_inner_node(sequence, left_alphabet);
+        let right_child = Self::create_boxed_inner_node(sequence, right_alphabet);
 
-    /// Access element at index i
-    pub fn access(&self, i: u64) -> Option<&T> {
-        if self.is_leaf() {
-            self.label.as_ref()
-        } else {
-            self.bitmap.as_ref().and_then(|bm: &RankSelect| -> Option<&T> {
-                if bm.get(i) {
-                    self.right_child.as_ref().and_then(|child| child.access(bm.rank_1(i).unwrap() - 1))
-                } else {
-                    self.left_child.as_ref().and_then(|child| child.access(bm.rank_0(i).unwrap() - 1))
-                }
-            })
+        // Return a new WaveletTreeNode containing the created bitmap and children.
+        WaveletTreeNode {
+            bitmap,
+            left_child,
+            right_child
         }
     }
 
-    fn is_leaf(&self) -> bool {
-        self.left_child.is_none() && self.right_child.is_none()
+    fn create_boxed_inner_node <T: PartialOrd + Clone> (sequence: &[T], alphabet: &[T]) -> Option<Box<Self>> {
+        if sequence.len() <= 1 || alphabet.len() <= 1 {
+            None
+        } else {
+            Some(Box::new(WaveletTreeNode::new(sequence, alphabet)))
+        }
     }
 
+    /// returns the alphabet index of the symbol at position i in the sequence
+    /// [a,b) is the subrange of the alphabet that the current node represents
+    fn access(&self, i: u64, a: usize, b: usize) -> Option<usize> {
+        let bm = &self.bitmap;
+        let center = (a+b)/2;
+
+        // If the bitmap contains a 1 at position i, look in the right subtree.
+        // Otherwise look in the left subtree.
+        if bm.get(i) {
+            if b-center <= 1 {
+                Some(center)
+            } else {
+                self.right_child.as_ref().and_then(|child| child.access(bm.rank_1(i).unwrap() - 1, center, b))
+            }
+        } else {
+            if center-a <= 1 {
+                Some(a)
+            } else {
+                self.left_child.as_ref().and_then(|child| child.access(bm.rank_0(i).unwrap() - 1, a, center))
+            }
+        }
+    }
 }
 
 pub struct PointerlessWaveletTree<T: PartialOrd + Clone> {
@@ -235,11 +233,14 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
 
 }
 
-fn create_bitmap<T: PartialOrd>(sequence: &Vec<T>, mid_symbol: &T) -> RankSelect {
+fn create_bitmap<T: PartialOrd>(sequence: &[T], alphabet: &[T]) -> RankSelect {
+    let ref_symbol = &alphabet[alphabet.len()/2];
     let mut bits : BitVec<u8> = BitVec::new();
 
     for symbol in sequence.iter() {
-        bits.push(symbol >= mid_symbol);
+        if alphabet.contains(symbol) {
+            bits.push(symbol >= ref_symbol);
+        }
     }
 
     RankSelect::new(bits, 1)
@@ -264,20 +265,11 @@ mod tests {
     use bv::bit_vec;
 
     #[test]
-    fn test_pointer_wavelet_tree_new_leaf() {
-        let pwt : PointerWaveletTree<char> = PointerWaveletTree::new(vec!['a','a','a'], vec!['a']);
-
-        assert!(pwt.is_leaf());
-        assert_eq!(pwt.label, Some('a'));
-    }
-
-    #[test]
     fn test_create_bitmap() {
         let text = "alabar a la alabarda";
         let sequence : Vec<char> = text.chars().collect();
-        let ref_symbol = 'd';
 
-        let bitmap = create_bitmap(&sequence, &ref_symbol);
+        let bitmap = create_bitmap(&sequence, &[' ','a','b','d','l','r']);
 
         let expected_bits = bit_vec![
             false, true, false, false, 
@@ -289,36 +281,24 @@ mod tests {
     }
 
     #[test]
-    fn test_pointer_wavelet_tree_new_has_children() {
+    fn test_pointer_wavelet_tree_new() {
         let text = "alabar a la alabarda";
-        let alphabet = vec![' ','a','b','d','l','r'];
-        let pwt = PointerWaveletTree::new(text.chars().collect(), alphabet);
+        let sequence : &Vec<char> = &text.chars().collect();
+        let pwt = PointerWaveletTree::from_sequence(sequence);
 
-        // The wavelet tree should not be a leaf and, therefore, have no label.
-        assert!(!pwt.is_leaf());
-        assert_eq!(pwt.label, None);
-
-        // The root of the wavelet tree should have a bitmap.
-        assert!(pwt.bitmap.is_some());
+        // The correct alphabet should automatically be created
+        assert_eq!(pwt.alphabet, vec![' ','a','b','d','l','r']);
 
         // The root of the wavelet tree should have two children.
-        assert!(pwt.left_child.is_some());
-        assert!(pwt.right_child.is_some());
+        assert!(pwt.root.left_child.is_some());
+        assert!(pwt.root.right_child.is_some());
     }
 
     #[test]
-    fn test_access_leaf() {
-        let pwt : PointerWaveletTree<char> = PointerWaveletTree::new(vec!['a','a','a'], vec!['a']);
-        assert_eq!(pwt.access(0), Some('a').as_ref());
-        assert_eq!(pwt.access(1), Some('a').as_ref());
-        assert_eq!(pwt.access(2), Some('a').as_ref());
-    }
-
-    #[test]
-    fn test_access() {
+    fn test_access_inside_range() {
         let text = "alabar a la alabarda";
-        let alphabet = vec![' ','a','b','d','l','r'];
-        let pwt = PointerWaveletTree::new(text.chars().collect(), alphabet);
+        let sequence : &Vec<char> = &text.chars().collect();
+        let pwt = PointerWaveletTree::from_sequence(sequence);
 
         assert_eq!(pwt.access(0), Some('a').as_ref());
         assert_eq!(pwt.access(1), Some('l').as_ref());
@@ -340,5 +320,14 @@ mod tests {
         assert_eq!(pwt.access(17), Some('r').as_ref());
         assert_eq!(pwt.access(18), Some('d').as_ref());
         assert_eq!(pwt.access(19), Some('a').as_ref());
+    }
+
+    #[test]
+    fn test_access_out_of_range() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let pwt = PointerWaveletTree::from_sequence(sequence);
+
+        assert_eq!(pwt.access(20), None);
     }
 }
