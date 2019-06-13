@@ -153,18 +153,25 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         else {
             let mut bits: BitVec<u8> = BitVec::new();
 
+            // Calculates smallest total number d with alphabet.length <= 2^d
             let mut bound = 1;
             while bound < alphabet.len() {
                 bound *= 2;
             };
 
+            // Defines how the Alphabet is partitioned
             let partition = Self::partition_alphabet(bound, alphabet.len());
 
+            // layer = 2^d with d = depth in Tree
             let mut layer = 1;
+            // index = sub-alphabet length in part of partition
             let mut index;
+            // last = start of subsequence, next = end of subsequence, mid = midlle between last and next
             let mut last;
             let mut mid;
             let mut next;
+
+            // Calculates up to second-greatest depth
             while layer < bound / 2 {
                 index = bound / 2 / layer;
                 last = 0;
@@ -185,6 +192,7 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
                 layer *= 2;
             }
             let mut sum;
+            // Calculates greatest depth and fills with 0
             for i in 0..partition.len() {
                 if partition[i] {
                     for symbol in sequence.iter() {
@@ -208,6 +216,7 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         }
     }
 
+    // Calculates how the Alphabet is partitioned in Tree, true -> symbol in greatest depth, false -> symbol in second-greatest depth
     pub fn partition_alphabet(bound: usize, alphabetlen: usize) -> Vec<bool> {
         let mut part: Vec<bool> = Vec::new();
 
@@ -218,6 +227,7 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         part
     }
 
+    // Calculates Symbol Count in Partition up to index
     pub fn partition_sum(partition: &Vec<bool>, index: usize) -> usize {
         let mut sum = 0;
         for i in 0..index {
@@ -240,18 +250,6 @@ fn create_bitmap<T: PartialOrd>(sequence: &[T], alphabet: &[T]) -> RankSelect {
     for symbol in sequence.iter() {
         if alphabet.contains(symbol) {
             bits.push(symbol >= ref_symbol);
-        }
-    }
-
-    RankSelect::new(bits, 1)
-}
-
-fn create_sequence_bitmap<T: PartialOrd>(sequence: &Vec<T>, alphabet: &[T], mid_symbol: &T) -> RankSelect {
-    let mut bits : BitVec<u8> = BitVec::new();
-
-    for symbol in sequence.iter() {
-        if alphabet.contains(symbol) {
-            bits.push(symbol >= mid_symbol);
         }
     }
 
