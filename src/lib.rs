@@ -154,16 +154,11 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
             let mut bits: BitVec<u8> = BitVec::new();
 
             // Calculates smallest total number d with alphabet.length <= 2^d
-            let mut bound = 1;
-            while bound < alphabet.len() {
-                bound *= 2;
-            };
+            let bound = Self::alphabet_bound(alphabet.len());
 
             // Defines how the Alphabet is partitioned
             let partition = Self::partition_alphabet(bound, alphabet.len());
 
-            // layer = 2^d with d = depth in Tree
-            let mut layer = 1;
             // index = sub-alphabet length in part of partition
             let mut index;
             // last = start of subsequence, next = end of subsequence, mid = midlle between last and next
@@ -171,49 +166,47 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
             let mut mid;
             let mut next;
 
+            let mut step = bound;
             // Calculates up to second-greatest depth
-            while layer < bound / 2 {
-                index = bound / 2 / layer;
+            while step > 1 {
+                step /= 2;
+                index = step;
                 last = 0;
                 while index <= bound/2 {
                     next = Self::partition_sum(&partition, index);
-                    mid = Self::partition_sum(&partition, index - bound / 4 / layer);
+                    if step == 1 {
+                        if partition[index-1] {
+                            mid = (last + next) / 2;
+                        } else {
+                            mid = last;
+                        }
+                    } else {
+                        mid = Self::partition_sum(&partition, index - step / 2);
+                    }
 
                     for symbol in sequence.iter() {
-                        if symbol >= &alphabet[last] && symbol <= &alphabet[next - 1] {
-                            bits.push(symbol >= &alphabet[mid - 1]);
+                        if symbol >= &alphabet[last] && symbol <= &alphabet[next-1] {
+                            bits.push((mid != last) && (symbol >= &alphabet[mid]));
+                            if (mid != last) && (symbol >= &alphabet[mid]) {print!("1");} else {print!("0");}
                         }
                     }
 
                     last = next;
-                    index += bound / 2 / layer;
-                }
-
-                layer *= 2;
-            }
-            let mut sum;
-            // Calculates greatest depth and fills with 0
-            for i in 0..partition.len() {
-                if partition[i] {
-                    for symbol in sequence.iter() {
-                        sum = Self::partition_sum(&partition, i+1);
-                        if (symbol >= &alphabet[sum - 2]) && (symbol <= &alphabet[sum - 1]) {
-                            bits.push(symbol >= &alphabet[sum - 1]);
-                        }
-                    }
-                }
-                else {
-                    for symbol in sequence.iter() {
-                        sum = Self::partition_sum(&partition, i+1);
-                        if symbol == &alphabet[sum - 2] {
-                            bits.push(false);
-                        }
-                    }
+                    index += step;
                 }
             }
 
             return Option::Some(RankSelect::new(bits, 1));
         }
+    }
+
+    // Calculates smallest total number d with alphabet.length <= 2^d
+    pub fn alphabet_bound(alphabetlen: usize) -> usize {
+        let mut bound = 1;
+        while bound < alphabetlen {
+            bound *= 2;
+        };
+        bound
     }
 
     // Calculates how the Alphabet is partitioned in Tree, true -> symbol in greatest depth, false -> symbol in second-greatest depth
