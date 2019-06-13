@@ -200,6 +200,62 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         }
     }
 
+    pub fn access(&self, i: u64) -> Option<&T> {
+        // Upper bound and its log to base 2
+        let bound = Self::alphabet_bound(self.alphabet.len());
+        let log = Self::bound_log2(bound);
+
+        // Defines how the Alphabet is partitioned
+        let partition = Self::partition_alphabet(bound, self.alphabet.len());
+
+        let mut index = i as u64;
+        let level_len = self.bitmap.bits().len() / (log as u64);
+        if index >= level_len {
+            // Sorts out if index out of bounds
+            return Option::None;
+        }
+        let mut depth = 0;
+        let mut depth_start = 0;
+        let mut start = 0;
+        let mut end = level_len - 1;
+        let mut start_index = 0;
+        let mut end_index = partition.len();
+        while depth < log as u64 && ((end_index - start_index) > 1) {
+            if self.bitmap.get(depth_start + start + index) {
+                start_index = (start_index + end_index) / 2;
+                index = self.bitmap.rank_1(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_1(depth_start + start).unwrap_or_default();
+                start = start + self.bitmap.rank_0(depth_start + end).unwrap_or_default() - self.bitmap.rank_0(depth_start + start).unwrap_or_default();
+            } else {
+                end_index = (start_index + end_index) / 2;
+                index = self.bitmap.rank_0(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_0(depth_start + start).unwrap_or_default();
+                end = start + self.bitmap.rank_0(depth_start + end).unwrap_or_default() - self.bitmap.rank_0(depth_start + start).unwrap_or_default();
+            }
+
+            depth += 1;
+            depth_start = level_len * depth;
+        }
+        if partition[start_index] {
+            if self.bitmap.get(depth_start + start + index) {
+                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)+1]);
+            } else {
+                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
+            }
+        } else {
+            return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
+        }
+    }
+
+    // Calculates total log of bound (upper boundary)
+    pub fn bound_log2(bound: usize) -> usize {
+        let mut log = 0;
+        let mut new_bound = 1;
+        while new_bound < bound {
+            log += 1;
+            new_bound *= 2;
+        }
+        log
+    }
+
     // Calculates smallest total number d with alphabet.length <= 2^d
     pub fn alphabet_bound(alphabetlen: usize) -> usize {
         let mut bound = 1;
