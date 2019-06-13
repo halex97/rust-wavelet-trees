@@ -117,7 +117,7 @@ impl WaveletTreeNode {
 
 pub struct PointerlessWaveletTree<T: PartialOrd + Clone> {
     alphabet: Vec<T>,
-    bitmap: Option<RankSelect>
+    bitmap: RankSelect
 }
 
 impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
@@ -146,9 +146,9 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
     }
 
     /// Create new Pointerless Wavelet Tree
-    pub fn create_bits(sequence: &[T], alphabet: &[T]) -> Option<RankSelect> {
+    pub fn create_bits(sequence: &[T], alphabet: &[T]) -> RankSelect {
         if sequence.is_empty() {
-            return Option::None;
+            return RankSelect::new(BitVec::new(), 1);
         }
         else {
             let mut bits: BitVec<u8> = BitVec::new();
@@ -196,7 +196,7 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
                 }
             }
 
-            return Option::Some(RankSelect::new(bits, 1));
+            return RankSelect::new(bits, 1);
         }
     }
 
