@@ -187,7 +187,6 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
                     for symbol in sequence.iter() {
                         if symbol >= &alphabet[last] && symbol <= &alphabet[next-1] {
                             bits.push((mid != last) && (symbol >= &alphabet[mid]));
-                            if (mid != last) && (symbol >= &alphabet[mid]) {print!("1");} else {print!("0");}
                         }
                     }
 
