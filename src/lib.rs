@@ -249,8 +249,83 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
     /// Note that indices start at 0. Therefore, the first occurence (i=1) of the first symbol in the sequence would be
     /// returned as Some(0)!
     pub fn select(&self, c: T, i: u64) -> Option<u64> {
+        // If the alphabet contains c, we can execute a SELECT operation.
+        // Otherwise, None is returned.
+        if self.alphabet.contains(&c) {
+            // Calculate n
+            let n = self.bitmap.bits().len() / (Self::bound_log2(Self::alphabet_bound(self.alphabet.len())) as u64);
+            // Compute select(c,i) on the root node (bitmap subrange 0..n, representing the whole alphabet)
+            self.select_on_node(c, i, 0, n, 0, self.alphabet.len() as u64, n)
+        } else {
+            None
+        }
 
-        unimplemented!();
+    }
+
+    /// Operation SELECT on the node corresponding to the bitmap given by the range [l,r). The node represents the
+    /// subrange [a,b) of the tree's alphabet.
+    fn select_on_node(&self, c: T, i: u64, l: u64, r: u64, a: u64, b: u64, n: u64) -> Option<u64> {
+
+        // If we are not on leaf level yet (i.e. if the alphabet represented by this node contains more than 1 symbol),
+        // we need to move "downwards" in order to find the leaf corresponding to c.
+        if b-a > 1 {
+            // position where the alphabet represented by the current node is cut by its children
+            let alphabet_cut = a + 2u64.pow((((b-a) as f64).log2().ceil() as u32) -1); 
+
+            // Moving down works similar to ACCESS: we look at the subtree where c can be found, which depends on the
+            // position of c in relation to the center of the alphabet represented by the current node.
+            if c < self.alphabet[alphabet_cut as usize] {
+                println!(" => links.");
+                // Compute interval of bitmap and alphabet for the right child
+                let new_l = n+l;
+                let new_r = n+l + self.bitmap.rank_0(r).unwrap() - self.bitmap.rank_0(l).unwrap();
+                let new_a = a;
+                let new_b = alphabet_cut;
+
+                // Recursively compute position on lower level
+                let p = self.select_on_node(c, i, new_l, new_r, new_a, new_b, n);
+
+                // The variable p indicates the position of the i-th occurence of symbol c on the next level. The 
+                // position of the i-th occurence of c on the current level now corresponds to the (p+1)-th occurence of
+                // a 0 on the current level, i.e. select_0(p+1) on the current level.
+                // However, the SELECT operation needs to be carried out on the bitmap representing the whole tree. 
+                // Therefore, we need to add the number of appearances of 0 before the beginning of the [l,r)-part of
+                // the bitmap, which is rank_0(l-1), to (p+1); the position returned by SELECT needs to be adjusted as
+                // well by subtracting the starting position of the current node's bitmap, i.e. l.
+
+                let offset = if l > 0 {self.bitmap.rank_0(l-1).unwrap()} else {0};
+
+                p.map(|pos| pos + 1)
+                 .map(|pos| pos + offset)
+                 .and_then(|pos| self.bitmap.select_0(pos))
+                 .map(|selected| selected - l)
+
+                // p.map(|pos| self.bitmap.select_0(pos+1).unwrap())
+            } else {
+                println!(" => rechts.");
+                // Compute interval of bitmap and alphabet for the right child
+                let new_l = n+l + self.bitmap.rank_0(r).unwrap() - self.bitmap.rank_0(l).unwrap();
+                let new_r = n+r;
+                let new_a = alphabet_cut;
+                let new_b = b;
+
+                // Recursively compute position on lower level
+                let p = self.select_on_node(c, i, new_l, new_r, new_a, new_b, n);
+
+                // The variable p indicates the position of the i-th occurence of symbol c on the next level. The 
+                // position of the i-th occurence of c on the current level now corresponds to  select_1(p+1) on the 
+                // current level. For details see comments above.
+                let offset = if l > 0 {self.bitmap.rank_1(l-1).unwrap()} else {0};
+
+                p.map(|pos| pos + 1)
+                 .map(|pos| pos + offset)
+                 .and_then(|pos| self.bitmap.select_1(pos))
+                 .map(|selected| selected - l)
+            }
+        } else {
+            // At leaf level, the i-th occurence of c is at position (i-1).
+            Some(i-1)
+        }
     }
 
     // Calculates total log of bound (upper boundary)
@@ -399,6 +474,10 @@ mod tests {
 
         // The bitmap of the pointerless wavelet tree should have a specific format
         // (trailing 0s are needed to compute n)
+        // The bitmap is implicitly divided as follows:
+        // level 1: 01000100010001000100
+        // level 2: 001000000001010 | 01001
+        // level 3: 111010101111 | 001
         let expected_bit_string = "010001000100010001000010000000010100100111101010111100100000";
 
         assert_eq!(expected_bit_string, bit_vec_to_string(tree.bitmap.bits()));
