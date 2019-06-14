@@ -377,4 +377,75 @@ mod tests {
 
         assert_eq!(pwt.access(20), None);
     }
+
+    // TESTS FOR POINTERLESS WAVELET TREE START HERE
+
+    #[test]
+    fn test_pointerless_wavelet_tree_from_sequence() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        // The correct alphabet should automatically be created
+        assert_eq!(tree.alphabet, vec![' ','a','b','d','l','r']);
+
+        // The bitmap of the pointerless wavelet tree should have a specific format
+        // (trailing 0s are needed to compute n)
+        let expected_bit_string = "010001000100010001000010000000010100100111101010111100100000";
+
+        assert_eq!(expected_bit_string, bit_vec_to_string(tree.bitmap.bits()));
+    }
+
+    fn bit_vec_to_string(bit_vector: &BitVec<u8>) -> String {
+        let n = bit_vector.len();
+
+        let mut bit_string = String::with_capacity(bit_vector.len() as usize);
+
+        for i in 0..n {
+            if bit_vector[i] {
+                bit_string.push('1');
+            } else {
+                bit_string.push('0');
+            }
+        }
+
+        bit_string
+    }
+
+    #[test]
+    fn test_pointerless_access_inside_range() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        assert_eq!(Some('a').as_ref(), tree.access(0));
+        assert_eq!(Some('l').as_ref(), tree.access(1));
+        assert_eq!(Some('a').as_ref(), tree.access(2));
+        assert_eq!(Some('b').as_ref(), tree.access(3));
+        assert_eq!(Some('a').as_ref(), tree.access(4));
+        assert_eq!(Some('r').as_ref(), tree.access(5));
+        assert_eq!(Some(' ').as_ref(), tree.access(6));
+        assert_eq!(Some('a').as_ref(), tree.access(7));
+        assert_eq!(Some(' ').as_ref(), tree.access(8));
+        assert_eq!(Some('l').as_ref(), tree.access(9));
+        assert_eq!(Some('a').as_ref(), tree.access(10));
+        assert_eq!(Some(' ').as_ref(), tree.access(11));
+        assert_eq!(Some('a').as_ref(), tree.access(12));
+        assert_eq!(Some('l').as_ref(), tree.access(13));
+        assert_eq!(Some('a').as_ref(), tree.access(14));
+        assert_eq!(Some('b').as_ref(), tree.access(15));
+        assert_eq!(Some('a').as_ref(), tree.access(16));
+        assert_eq!(Some('r').as_ref(), tree.access(17));
+        assert_eq!(Some('d').as_ref(), tree.access(18));
+        assert_eq!(Some('a').as_ref(), tree.access(19));
+    }
+
+    #[test]
+    fn test_pointerless_access_out_of_range() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        assert_eq!(None, tree.access(20));
+    }
 }
