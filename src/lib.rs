@@ -245,6 +245,15 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         }
     }
 
+    /// Operation SELECT: returns the position of the i-th occurence of symbol c in the sequence represented by this 
+    /// wavelet tree
+    /// Note that indices start at 0. Therefore, the first occurence (i=1) of the first symbol in the sequence would be
+    /// returned as Some(0)!
+    pub fn select(&self, c: T, i: u64) -> Option<u64> {
+
+        unimplemented!();
+    }
+
     // Calculates total log of bound (upper boundary)
     pub fn bound_log2(bound: usize) -> usize {
         let mut log = 0;
@@ -447,5 +456,50 @@ mod tests {
         let tree = PointerlessWaveletTree::from_sequence(sequence);
 
         assert_eq!(None, tree.access(20));
+    }
+
+    #[test]
+    fn test_pointerless_select_first_appearance_of_each_symbol() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        assert_eq!(Some(0), tree.select('a', 1));
+        assert_eq!(Some(1), tree.select('l', 1));
+        assert_eq!(Some(3), tree.select('b', 1));
+        assert_eq!(Some(5), tree.select('r', 1));
+        assert_eq!(Some(6), tree.select(' ', 1));
+        assert_eq!(Some(18), tree.select('d', 1));
+}
+
+    #[test]
+    fn test_pointerless_select_all_appearances_of_one_symbol() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        assert_eq!(Some(0), tree.select('a', 1));
+        assert_eq!(Some(2), tree.select('a', 2));
+        assert_eq!(Some(4), tree.select('a', 3));
+        assert_eq!(Some(7), tree.select('a', 4));
+        assert_eq!(Some(10), tree.select('a', 5));
+        assert_eq!(Some(12), tree.select('a', 6));
+        assert_eq!(Some(14), tree.select('a', 7));
+        assert_eq!(Some(16), tree.select('a', 8));
+        assert_eq!(Some(19), tree.select('a', 9));
+    }
+
+    #[test]
+    fn test_pointerless_select_invalid_argument() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        // Out of range
+        assert_eq!(None, tree.select('a', 20));
+        // Symbol not in alphabet
+        assert_eq!(None, tree.select('x', 1));
+        // i too high
+        assert_eq!(None, tree.select('d', 2));
     }
 }
