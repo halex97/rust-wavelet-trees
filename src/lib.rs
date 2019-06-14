@@ -46,6 +46,21 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
             index_in_alphabet.map(|index| &self.alphabet[index])
         }
     }
+
+    /// Returns the number of appearances of symbol c in the sequence up until position i
+    pub fn rank(&self, c: T, i: u64) -> Option<u64> {
+        // If the given index is larger than the size of the bitmap (i.e. if it is larger than the amout of symbols in
+        // the sequence), no rank can be returned.
+        // Otherwise the rank() function of WaveletTreeNode is called.
+        if i as u64 >= self.root.bitmap.bits().len() {
+            None
+        } else {
+            // Find the index of c in the alphabet
+            let c_index : Option<usize> = self.alphabet.iter().position(|x| x == &c);
+            // If c could not be found in the alphabet, return None. Otherwise, return rank_c(i).
+            c_index.and_then(|ci| self.root.rank(ci as u64, i, 0, self.alphabet.len()))
+        }
+    }
 }
 
 struct WaveletTreeNode {
@@ -110,6 +125,35 @@ impl WaveletTreeNode {
                 Some(a)
             } else {
                 self.left_child.as_ref().and_then(|child| child.access(bm.rank_0(i).unwrap() - 1, a, center))
+            }
+        }
+    }
+
+    /// returns the rank of symbol alphabet[c_index] in the sequence
+    /// [a,b) is the subrange of the alphabet that the current node represents
+    fn rank(&self, c_index: u64, i: u64, a: usize, b: usize) -> Option<u64> {
+        let center = (a+b)/2;
+
+        // First, we need to find out if the leaf representing c is in the left or right subtree.
+        if c_index < center as u64 {
+            // If the left subtree is the leaf, rank_0 of i is the final answer.
+            // If rank_0(i)==0, there is no c up to position i (thus, rank_0 of i is the final answer).
+            // Otherwise, we call rank on the left subtree with an adjusted index i.
+            if center - a <= 1 || self.bitmap.rank_0(i) == Some(0) {
+                self.bitmap.rank_0(i)
+            } else {
+                self.left_child.as_ref()
+                               .and_then(|child| child.rank(c_index, self.bitmap.rank_0(i).unwrap()-1, a, center))
+            }
+        } else {
+            // If the right subtree is the leaf, rank_1 of i is the final answer.
+            // If rank_1(i)==0, there is no c up to position i (thus, rank_1 of i is the final answer).
+            // Otherwise, we call rank on the right subtree with an adjusted index i.
+            if b - center <= 1 || self.bitmap.rank_1(i) == Some(0) {
+                self.bitmap.rank_1(i)
+            } else {
+                self.right_child.as_ref()
+                                .and_then(|child| child.rank(c_index, self.bitmap.rank_1(i).unwrap()-1, center, b))
             }
         }
     }
@@ -200,5 +244,57 @@ mod tests {
         let pwt = PointerWaveletTree::from_sequence(sequence);
 
         assert_eq!(pwt.access(20), None);
+    }
+
+    #[test]
+    fn test_rank_first_appearance() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerWaveletTree::from_sequence(sequence);
+
+        // returns 0 before first appearance
+        assert_eq!(Some(0), tree.rank('l', 0));
+        assert_eq!(Some(0), tree.rank('b', 2));
+        assert_eq!(Some(0), tree.rank('r', 4));
+        assert_eq!(Some(0), tree.rank(' ', 5));
+        assert_eq!(Some(0), tree.rank('d', 17));
+
+        // returns 1 at exact position of first appearance
+        assert_eq!(Some(1), tree.rank('a', 0));
+        assert_eq!(Some(1), tree.rank('l', 1));
+        assert_eq!(Some(1), tree.rank('b', 3));
+        assert_eq!(Some(1), tree.rank('r', 5));
+        assert_eq!(Some(1), tree.rank(' ', 6));
+        assert_eq!(Some(1), tree.rank('d', 18));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_rank_all_appearances_of_one_symbol() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerWaveletTree::from_sequence(sequence);
+        
+        assert_eq!(Some(1), tree.rank('a', 0));
+        assert_eq!(Some(2), tree.rank('a', 2));
+        assert_eq!(Some(3), tree.rank('a', 4));
+        assert_eq!(Some(4), tree.rank('a', 7));
+        assert_eq!(Some(5), tree.rank('a', 10));
+        assert_eq!(Some(6), tree.rank('a', 12));
+        assert_eq!(Some(7), tree.rank('a', 14));
+        assert_eq!(Some(8), tree.rank('a', 16));
+        assert_eq!(Some(9), tree.rank('a', 19));
+    }
+
+    #[test]
+    fn test_rank_invalid_argument() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerWaveletTree::from_sequence(sequence);
+        
+        // out of range
+        assert_eq!(None, tree.rank('a', 20));
+        // unknown symbol
+        assert_eq!(None, tree.rank('x', 19));
     }
 }
