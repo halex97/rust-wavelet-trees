@@ -255,6 +255,63 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         }
     }
 
+    pub fn rank(&self, symbol: &T, i: u64) -> u64 {
+        // Upper bound and its log to base 2
+        let bound = Self::alphabet_bound(self.alphabet.len());
+        let log = Self::bound_log2(bound);
+
+        // Defines how the Alphabet is partitioned
+        let partition = Self::partition_alphabet(bound, self.alphabet.len());
+        let symbol_in_alphabet = self.alphabet.iter().position(|x| x == symbol).unwrap_or_default();
+        let symbol_index = Self::partition_slice(&partition, symbol_in_alphabet);
+
+        // Returns if Alphabet is empty == Empty String or Alphabet does not contain Symbol
+        if (self.alphabet.len() == 0) || !self.alphabet.contains(symbol) {return 0;}
+        // Returns Result for one Symbol in Alphabet
+        if (self.alphabet.len() == 1) && self.alphabet.contains(symbol) {
+            if i < self.bitmap.bits().len() {
+                return i+1;
+            } else {
+                return self.bitmap.bits().len();
+            }
+        }
+
+        // Calculates index, start and end of each new Layer till second to last Layer, while returning 0 if index smaller than first occurence of symbol
+        let mut index = i as u64;
+        let level_len = self.bitmap.bits().len() / (log as u64);
+        let mut depth_start = 0;
+        let mut start = 0;
+        let mut end = level_len - 1;
+        let mut start_index = 0;
+        let mut end_index = partition.len();
+        if index >= end {index = end;}
+        while (end_index - start_index) > 1 {
+            if symbol_index >= ((start_index + end_index) / 2) {
+                start_index = (start_index + end_index) / 2;
+                if index == 0 && !self.bitmap.get(depth_start + start) {return 0;}
+                if index > 0 {index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};}
+                start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
+            } else {
+                end_index = (start_index + end_index) / 2;
+                if index == 0 && self.bitmap.get(depth_start + start) {return 0;}
+                if index > 0 {index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};}
+                end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
+            }
+            depth_start += level_len;
+        }
+
+        // Returns Result for last Layer
+        if partition[start_index] {
+            if symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1 {
+                return self.bitmap.rank_1(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_1(depth_start + start).unwrap_or_default() + if self.bitmap.get(depth_start + start) {1} else {0};
+            } else {
+                return self.bitmap.rank_0(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_0(depth_start + start).unwrap_or_default() + if !self.bitmap.get(depth_start + start) {1} else {0};
+            }
+        } else {
+            return self.bitmap.rank_0(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_0(depth_start + start).unwrap_or_default() + 1;
+        }
+    }
+
     /// Operation SELECT: returns the position of the i-th occurence of symbol c in the sequence represented by this 
     /// wavelet tree
     /// Note that indices start at 0. Therefore, the first occurence (i=1) of the first symbol in the sequence would be
@@ -382,6 +439,24 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
             }
         }
         sum
+    }
+
+    // Calculates index in Partition from index in Alphabet
+    pub fn partition_slice(partition: &Vec<bool>, index: usize) -> usize {
+        let mut slice = 0;
+        for i in 0..partition.len()-1 {
+            if partition[i] {
+                slice += 2;
+            } else {
+                slice += 1;
+            }
+            if slice > index {
+                return i;
+            } else if slice == index {
+                return i+1;
+            }
+        }
+        partition.len()-1
     }
 
 }
