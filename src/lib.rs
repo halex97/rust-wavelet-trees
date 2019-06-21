@@ -153,6 +153,12 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         else {
             let mut bits: BitVec<u8> = BitVec::new();
 
+            // Special Case if Alphabet contains one Element
+            if alphabet.len() == 1 {
+                for i in 0..sequence.len() {bits.push(false);}
+                return RankSelect::new(bits, 1);
+            }
+
             // Calculates smallest total number d with alphabet.length <= 2^d
             let bound = Self::alphabet_bound(alphabet.len());
 
