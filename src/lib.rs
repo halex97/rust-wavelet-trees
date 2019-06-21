@@ -739,7 +739,7 @@ mod tests {
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerlessWaveletTree::from_sequence(sequence);
 
-        let mut pos = 0;
+        let mut pos : u64 = text.len() as u64 -1;
         for symbol in tree.alphabet.clone().into_iter() {
             assert_eq!(Some(pos), tree.select(symbol, pos+1));
             pos = pos + 1;
