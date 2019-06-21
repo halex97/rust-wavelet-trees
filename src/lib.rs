@@ -681,7 +681,7 @@ mod tests {
 
     #[test]
     fn test_pointerless_select_all_valid_arguments() {
-        let text = "alabar a la alabarda";
+        let text = "The quick brown fox jumps over a lazy dog";
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerlessWaveletTree::from_sequence(sequence);
 
@@ -701,6 +701,32 @@ mod tests {
                 assert_eq!(Option::Some(index as u64), tree.select(symbol, j as u64));
                 index += 1;
             };
+        }
+    }
+
+    #[test]
+    fn test_pointerless_select_ascending_alphabet_as_sequence() {
+        let text = "abcdefghijklmnopqrstuvwxyz";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        let mut pos = 0;
+        for symbol in tree.alphabet.clone().into_iter() {
+            assert_eq!(Some(pos), tree.select(symbol, pos+1));
+            pos = pos + 1;
+        }
+    }
+
+    #[test]
+    fn test_pointerless_select_descending_alphabet_as_sequence() {
+        let text = "zyxwvutsrqponmlkjihgfedcba";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        let mut pos = 0;
+        for symbol in tree.alphabet.clone().into_iter() {
+            assert_eq!(Some(pos), tree.select(symbol, pos+1));
+            pos = pos + 1;
         }
     }
 }
