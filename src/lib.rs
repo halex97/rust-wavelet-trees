@@ -680,4 +680,29 @@ mod tests {
         // i too high
         assert_eq!(None, tree.select('d', 2));
     }
+
+    #[test]
+    fn test_pointerless_select_all_valid_arguments() {
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerlessWaveletTree::from_sequence(sequence);
+
+        let mut alphabet = Vec::new();
+        for symbol in sequence.iter() {
+            if !alphabet.contains(symbol) {
+                alphabet.push(symbol.clone());
+            }
+        }
+        alphabet.sort_by(|x,y| x.partial_cmp(y).unwrap());
+
+        for i in 0..alphabet.len() {
+            let symbol = alphabet[i].clone();
+            let mut index = 0;
+            for j in 1..sequence.iter().filter(|&n| *n == symbol).count()+1 {
+                for k in index..sequence.len() {if sequence[k] != symbol {index += 1;} else {break;}}
+                assert_eq!(Option::Some(index as u64), tree.select(symbol, j as u64));
+                index += 1;
+            };
+        }
+    }
 }
