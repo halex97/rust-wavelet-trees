@@ -357,7 +357,6 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
             // Moving down works similar to ACCESS: we look at the subtree where c can be found, which depends on the
             // position of c in relation to the center of the alphabet represented by the current node.
             if c < self.alphabet[alphabet_cut as usize] {
-                println!(" => links.");
                 // Compute interval of bitmap and alphabet for the right child
                 let new_l = n+l;
                 let new_r = n+l + self.bitmap.rank_0(r).unwrap() - self.bitmap.rank_0(l).unwrap();
@@ -384,7 +383,6 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
 
                 // p.map(|pos| self.bitmap.select_0(pos+1).unwrap())
             } else {
-                println!(" => rechts.");
                 // Compute interval of bitmap and alphabet for the right child
                 let new_l = n+l + self.bitmap.rank_0(r).unwrap() - self.bitmap.rank_0(l).unwrap();
                 let new_r = n+r;
