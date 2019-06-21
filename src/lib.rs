@@ -326,6 +326,14 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         // If the alphabet contains c, we can execute a SELECT operation.
         // Otherwise, None is returned.
         if self.alphabet.contains(&c) {
+            // Calculates Result for Alphabet of length 1
+            if self.alphabet.len() == 1 {
+                if i < self.bitmap.bits().len()+1 {
+                    return Option::Some(i-1);
+                } else {
+                    return Option::None;
+                }
+            }
             // Calculate n
             let n = self.bitmap.bits().len() / (Self::bound_log2(Self::alphabet_bound(self.alphabet.len())) as u64);
             // Compute select(c,i) on the root node (bitmap subrange 0..n, representing the whole alphabet)
