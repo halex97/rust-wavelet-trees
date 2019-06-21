@@ -171,7 +171,7 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
 
             // Special Case if Alphabet contains one Element
             if alphabet.len() == 1 {
-                for i in 0..sequence.len() {bits.push(false);}
+                bits = BitVec::new_fill(false, sequence.len() as u64);
                 return RankSelect::new(bits, 1);
             }
 
