@@ -728,7 +728,7 @@ mod tests {
 
         let mut pos = 0;
         for symbol in tree.alphabet.clone().into_iter() {
-            assert_eq!(Some(pos), tree.select(symbol, pos+1));
+            assert_eq!(Some(pos), tree.select(symbol, 1));
             pos = pos + 1;
         }
     }
@@ -741,8 +741,8 @@ mod tests {
 
         let mut pos : u64 = text.len() as u64 -1;
         for symbol in tree.alphabet.clone().into_iter() {
-            assert_eq!(Some(pos), tree.select(symbol, pos+1));
-            pos = pos + 1;
+            assert_eq!(Some(pos), tree.select(symbol, 1));
+            pos = pos - 1;
         }
     }
 }
