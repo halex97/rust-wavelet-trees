@@ -120,6 +120,22 @@ pub struct PointerlessWaveletTree<T: PartialOrd + Clone> {
     bitmap: RankSelect
 }
 
+impl <T: PartialOrd + Clone> std::fmt::Debug for PointerlessWaveletTree<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut bitmap_string = String::new();
+
+        for i in 0..self.bitmap.bits().len() {
+            if self.bitmap.get(i) {
+                bitmap_string.push_str("1");
+            } else {
+                bitmap_string.push_str("0");
+            }
+        }
+
+        write!(f, "PointerlessWaveletTree {{ bitmap: {} }}", bitmap_string)
+    }
+}
+
 impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
 
     pub fn from_sequence(sequence: &[T]) -> Self {
