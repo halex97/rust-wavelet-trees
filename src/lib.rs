@@ -318,11 +318,106 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         }
     }
 
+    pub fn select(&self, symbol: &T, i: u64) -> Option<u64> {
+        // Upper bound and its log to base 2
+        let bound = Self::alphabet_bound(self.alphabet.len());
+        let log = Self::bound_log2(bound);
+
+        // Defines how the Alphabet is partitioned
+        let partition = Self::partition_alphabet(bound, self.alphabet.len());
+        let symbol_in_alphabet = self.alphabet.iter().position(|x| x == symbol).unwrap_or_default();
+        let symbol_index = Self::partition_slice(&partition, symbol_in_alphabet);
+
+        // Returns if Alphabet is empty == Empty String or Alphabet does not contain Symbol or index too small
+        if (self.alphabet.len() == 0) || !self.alphabet.contains(symbol) || i == 0 {return Option::None;}
+        // Returns Result for one Symbol in Alphabet
+        if (self.alphabet.len() == 1) && self.alphabet.contains(symbol) {
+            if i < self.bitmap.bits().len() {
+                return Option::Some(i-1);
+            } else {
+                return Option::None;
+            }
+        }
+
+        // Vectors for traversing tree upwards after traversing downwards
+        let mut start_points: Vec<u64> = Vec::new();
+        let mut index_points: Vec<bool> = Vec::new();
+
+        // Calculates index, start and end of each new Layer till second to last Layer, while saving data necessary for upwards traversal of Tree
+        let mut index = i as u64 - 1;
+        let level_len = self.bitmap.bits().len() / (log as u64);
+        let mut depth_start = 0;
+        let mut start = 0;
+        let mut end = level_len - 1;
+        let mut start_index = 0;
+        let mut end_index = partition.len();
+        while (end_index - start_index) > 1 {
+            start_points.push(start);
+            if symbol_index >= ((start_index + end_index) / 2) {
+                start_index = (start_index + end_index) / 2;
+                start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
+                index_points.push(true);
+            } else {
+                end_index = (start_index + end_index) / 2;
+                end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
+                index_points.push(false);
+            }
+
+            depth_start += level_len;
+        }
+
+        // Variable for fixing bug in dependant library (RankSelect)
+        let interim_result;
+
+        // Start Of traversal Upwards in Tree
+        if partition[start_index] {
+            if symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1 {
+                interim_result = index + self.bitmap.rank_1(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0} + 1;
+                if index >= self.bitmap.rank_1(depth_start + end).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0} {return Option::None;}
+                // Necessary for bug fixing
+                else if interim_result == self.bitmap.rank_1(self.bitmap.bits().len()-1).unwrap() {
+                    for counter in (start..end+1).rev() {
+                        if self.bitmap.get(depth_start + counter as u64) {
+                            index = counter - start;
+                            break;
+                        }
+                    }
+                }
+                else {index = self.bitmap.select_1(interim_result).unwrap() - depth_start - start;}
+            } else {
+                interim_result = index + self.bitmap.rank_0(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0} + 1;
+                if index >= self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0} {return Option::None;}
+                // Necessary for bug fixing
+                else if interim_result == self.bitmap.rank_0(self.bitmap.bits().len()-1).unwrap() {
+                    for counter in (start..end+1).rev() {
+                        if !self.bitmap.get(depth_start + counter as u64) {
+                            index = counter - start;
+                            break;
+                        }
+                    }
+                }
+                else {index = self.bitmap.select_0(interim_result).unwrap() - depth_start - start;}
+            }
+        } else {
+            if index >= self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + 1 {return Option::None;}
+        }
+
+        // Full Upward traversal, unraveling Data while calculating indizes
+        while start_points.len() > 0 {
+            depth_start -= level_len;
+            start = start_points.pop().unwrap();
+            index = if index_points.pop().unwrap() {self.bitmap.select_1(index + self.bitmap.rank_1(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0} + 1).unwrap()}
+            else {self.bitmap.select_0(index + self.bitmap.rank_0(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0} + 1).unwrap()} - depth_start - start;
+        }
+
+        return Option::Some(index);
+    }
+
     /// Operation SELECT: returns the position of the i-th occurence of symbol c in the sequence represented by this 
     /// wavelet tree
     /// Note that indices start at 0. Therefore, the first occurence (i=1) of the first symbol in the sequence would be
     /// returned as Some(0)!
-    pub fn select(&self, c: T, i: u64) -> Option<u64> {
+    pub fn select_old(&self, c: T, i: u64) -> Option<u64> {
         // If the alphabet contains c, we can execute a SELECT operation.
         // Otherwise, None is returned.
         if self.alphabet.contains(&c) {
@@ -640,12 +735,12 @@ mod tests {
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerlessWaveletTree::from_sequence(sequence);
 
-        assert_eq!(Some(0), tree.select('a', 1));
-        assert_eq!(Some(1), tree.select('l', 1));
-        assert_eq!(Some(3), tree.select('b', 1));
-        assert_eq!(Some(5), tree.select('r', 1));
-        assert_eq!(Some(6), tree.select(' ', 1));
-        assert_eq!(Some(18), tree.select('d', 1));
+        assert_eq!(Some(0), tree.select(&'a', 1));
+        assert_eq!(Some(1), tree.select(&'l', 1));
+        assert_eq!(Some(3), tree.select(&'b', 1));
+        assert_eq!(Some(5), tree.select(&'r', 1));
+        assert_eq!(Some(6), tree.select(&' ', 1));
+        assert_eq!(Some(18), tree.select(&'d', 1));
 }
 
     #[test]
@@ -654,15 +749,15 @@ mod tests {
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerlessWaveletTree::from_sequence(sequence);
 
-        assert_eq!(Some(0), tree.select('a', 1));
-        assert_eq!(Some(2), tree.select('a', 2));
-        assert_eq!(Some(4), tree.select('a', 3));
-        assert_eq!(Some(7), tree.select('a', 4));
-        assert_eq!(Some(10), tree.select('a', 5));
-        assert_eq!(Some(12), tree.select('a', 6));
-        assert_eq!(Some(14), tree.select('a', 7));
-        assert_eq!(Some(16), tree.select('a', 8));
-        assert_eq!(Some(19), tree.select('a', 9));
+        assert_eq!(Some(0), tree.select(&'a', 1));
+        assert_eq!(Some(2), tree.select(&'a', 2));
+        assert_eq!(Some(4), tree.select(&'a', 3));
+        assert_eq!(Some(7), tree.select(&'a', 4));
+        assert_eq!(Some(10), tree.select(&'a', 5));
+        assert_eq!(Some(12), tree.select(&'a', 6));
+        assert_eq!(Some(14), tree.select(&'a', 7));
+        assert_eq!(Some(16), tree.select(&'a', 8));
+        assert_eq!(Some(19), tree.select(&'a', 9));
     }
 
     #[test]
@@ -672,11 +767,13 @@ mod tests {
         let tree = PointerlessWaveletTree::from_sequence(sequence);
 
         // Out of range
-        assert_eq!(None, tree.select('a', 20));
+        assert_eq!(None, tree.select(&'a', 20));
         // Symbol not in alphabet
-        assert_eq!(None, tree.select('x', 1));
+        assert_eq!(None, tree.select(&'x', 1));
         // i too high
-        assert_eq!(None, tree.select('d', 2));
+        assert_eq!(None, tree.select(&'d', 2));
+        assert_eq!(None, tree.select(&'l', 4));
+        assert_eq!(None, tree.select(&'r', 3));
     }
 
     #[test]
@@ -698,7 +795,7 @@ mod tests {
             let mut index = 0;
             for j in 1..sequence.iter().filter(|&n| *n == symbol).count()+1 {
                 for k in index..sequence.len() {if sequence[k] != symbol {index += 1;} else {break;}}
-                assert_eq!(Option::Some(index as u64), tree.select(symbol, j as u64));
+                assert_eq!(Option::Some(index as u64), tree.select(&symbol, j as u64));
                 index += 1;
             };
         }
@@ -712,7 +809,7 @@ mod tests {
 
         let mut pos = 0;
         for symbol in tree.alphabet.clone().into_iter() {
-            assert_eq!(Some(pos), tree.select(symbol, pos+1));
+            assert_eq!(Some(pos), tree.select(&symbol, 1));
             pos = pos + 1;
         }
     }
@@ -724,8 +821,8 @@ mod tests {
         let tree = PointerlessWaveletTree::from_sequence(sequence);
 
         let mut pos = 0;
-        for symbol in tree.alphabet.clone().into_iter() {
-            assert_eq!(Some(pos), tree.select(symbol, pos+1));
+        for symbol in tree.alphabet.clone().into_iter().rev() {
+            assert_eq!(Some(pos), tree.select(&symbol, 1));
             pos = pos + 1;
         }
     }
