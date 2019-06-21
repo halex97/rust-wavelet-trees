@@ -303,12 +303,12 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         // Returns Result for last Layer
         if partition[start_index] {
             if symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1 {
-                return self.bitmap.rank_1(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_1(depth_start + start).unwrap_or_default() + if self.bitmap.get(depth_start + start) {1} else {0};
+                return self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0};
             } else {
-                return self.bitmap.rank_0(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_0(depth_start + start).unwrap_or_default() + if !self.bitmap.get(depth_start + start) {1} else {0};
+                return self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
             }
         } else {
-            return self.bitmap.rank_0(depth_start + start + index).unwrap_or_default() - self.bitmap.rank_0(depth_start + start).unwrap_or_default() + 1;
+            return self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + 1;
         }
     }
 
