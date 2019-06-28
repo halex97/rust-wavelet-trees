@@ -367,10 +367,10 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         unimplemented!();
     }
 
-    fn rank(&self, c: T, i: u64) -> Option<u64> {
+    fn rank(&self, c: &T, i: u64) -> Option<u64> {
         unimplemented!();
     }
-    fn select(&self, c: T, i: u64) -> Option<u64> {
+    fn select(&self, c: &T, i: u64) -> Option<u64> {
         unimplemented!();
     }
     fn access(&self, i: u64) -> Option<&T> {

@@ -48,7 +48,7 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerWaveletTree<T> {
     }
 
     /// Returns the number of appearances of symbol c in the sequence up until position i
-    fn rank(&self, c: T, i: u64) -> Option<u64> {
+    fn rank(&self, c: &T, i: u64) -> Option<u64> {
         // If the given index is larger than the size of the bitmap (i.e. if it is larger than the amout of symbols in
         // the sequence), no rank can be returned.
         // Otherwise the rank() function of WaveletTreeNode is called.
@@ -56,13 +56,13 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerWaveletTree<T> {
             None
         } else {
             // Find the index of c in the alphabet
-            let c_index : Option<usize> = self.alphabet.iter().position(|x| x == &c);
+            let c_index : Option<usize> = self.alphabet.iter().position(|x| x == c);
             // If c could not be found in the alphabet, return None. Otherwise, return rank_c(i).
             c_index.and_then(|ci| self.root.rank(ci as u64, i, 0, self.alphabet.len()))
         }
     }
 
-    fn select(&self, c: T, i: u64) -> Option<u64> {
+    fn select(&self, c: &T, i: u64) -> Option<u64> {
         unimplemented!();
     }
 }
@@ -255,20 +255,20 @@ mod tests {
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerWaveletTree::from_slice(sequence);
 
-        // returns 0 before first appearance
-        assert_eq!(Some(0), tree.rank('l', 0));
-        assert_eq!(Some(0), tree.rank('b', 2));
-        assert_eq!(Some(0), tree.rank('r', 4));
-        assert_eq!(Some(0), tree.rank(' ', 5));
-        assert_eq!(Some(0), tree.rank('d', 17));
+        // returns 0 before first appearan& ce
+        assert_eq!(Some(0), tree.rank(& 'l', 0));
+        assert_eq!(Some(0), tree.rank(& 'b', 2));
+        assert_eq!(Some(0), tree.rank(& 'r', 4));
+        assert_eq!(Some(0), tree.rank(& ' ', 5));
+        assert_eq!(Some(0), tree.rank(& 'd', 17));
 
         // returns 1 at exact position of first appearance
-        assert_eq!(Some(1), tree.rank('a', 0));
-        assert_eq!(Some(1), tree.rank('l', 1));
-        assert_eq!(Some(1), tree.rank('b', 3));
-        assert_eq!(Some(1), tree.rank('r', 5));
-        assert_eq!(Some(1), tree.rank(' ', 6));
-        assert_eq!(Some(1), tree.rank('d', 18));
+        assert_eq!(Some(1), tree.rank(& 'a', 0));
+        assert_eq!(Some(1), tree.rank(& 'l', 1));
+        assert_eq!(Some(1), tree.rank(& 'b', 3));
+        assert_eq!(Some(1), tree.rank(& 'r', 5));
+        assert_eq!(Some(1), tree.rank(& ' ', 6));
+        assert_eq!(Some(1), tree.rank(& 'd', 18));
     }
 
     #[test]
@@ -278,15 +278,15 @@ mod tests {
         let sequence : &Vec<char> = &text.chars().collect();
         let tree = PointerWaveletTree::from_slice(sequence);
         
-        assert_eq!(Some(1), tree.rank('a', 0));
-        assert_eq!(Some(2), tree.rank('a', 2));
-        assert_eq!(Some(3), tree.rank('a', 4));
-        assert_eq!(Some(4), tree.rank('a', 7));
-        assert_eq!(Some(5), tree.rank('a', 10));
-        assert_eq!(Some(6), tree.rank('a', 12));
-        assert_eq!(Some(7), tree.rank('a', 14));
-        assert_eq!(Some(8), tree.rank('a', 16));
-        assert_eq!(Some(9), tree.rank('a', 19));
+        assert_eq!(Some(1), tree.rank(& 'a', 0));
+        assert_eq!(Some(2), tree.rank(& 'a', 2));
+        assert_eq!(Some(3), tree.rank(& 'a', 4));
+        assert_eq!(Some(4), tree.rank(& 'a', 7));
+        assert_eq!(Some(5), tree.rank(& 'a', 10));
+        assert_eq!(Some(6), tree.rank(& 'a', 12));
+        assert_eq!(Some(7), tree.rank(& 'a', 14));
+        assert_eq!(Some(8), tree.rank(& 'a', 16));
+        assert_eq!(Some(9), tree.rank(& 'a', 19));
     }
 
     #[test]
@@ -296,8 +296,8 @@ mod tests {
         let tree = PointerWaveletTree::from_slice(sequence);
         
         // out of range
-        assert_eq!(None, tree.rank('a', 20));
+        assert_eq!(None, tree.rank(& 'a', 20));
         // unknown symbol
-        assert_eq!(None, tree.rank('x', 19));
+        assert_eq!(None, tree.rank(& 'x', 19));
     }
 }
