@@ -3,8 +3,8 @@ use bv::BitVec;
 use petgraph::graph::Graph;
 
 pub struct WaveletGraph<T: PartialOrd + Clone> {
-    lists: WaveletTree<T>
-    seperator: RankSelect
+    lists: WaveletTree<T>,
+    separator: RankSelect
 }
 
 impl <T: PartialOrd + Clone> WaveletGraph<T> {
