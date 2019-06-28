@@ -84,61 +84,6 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         }
     }
 
-    pub fn access(&self, i: u64) -> Option<&T> {
-        // Upper bound and its log to base 2
-        let bound = Self::alphabet_bound(self.alphabet.len());
-        let log = Self::bound_log2(bound);
-
-        // Defines how the Alphabet is partitioned
-        let partition = Self::partition_alphabet(bound, self.alphabet.len());
-
-        // Returns if Alphabet is empty == Empty String
-        if self.alphabet.len() == 0 {return Option::None;}
-        // Returns Result for one Symbol in Alphabet
-        if self.alphabet.len() == 1 {
-            if i < self.bitmap.bits().len() {
-                return Option::Some(&self.alphabet[0]);
-            } else {
-                return Option::None;
-            }
-        }
-        // Returns if Index out of Bounds
-        if i >= self.bitmap.bits().len() / (log as u64) {
-            return Option::None
-        }
-        
-        // Calculates index, start and end of each new Layer till second to last Layer
-        let mut index = i as u64;
-        let level_len = self.bitmap.bits().len() / (log as u64);
-        let mut depth_start = 0;
-        let mut start = 0;
-        let mut end = level_len - 1;
-        let mut start_index = 0;
-        let mut end_index = partition.len();
-        while (end_index - start_index) > 1 {
-            if self.bitmap.get(depth_start + start + index) {
-                start_index = (start_index + end_index) / 2;
-                if index > 0 {index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};}
-                start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
-            } else {
-                end_index = (start_index + end_index) / 2;
-                if index > 0 {index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};}
-                end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
-            }
-            depth_start += level_len;
-        }
-
-        // Returns Result for last Layer
-        if partition[start_index] {
-            if self.bitmap.get(depth_start + start + index) {
-                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)+1]);
-            } else {
-                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
-            }
-        } else {
-            return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
-        }
-    }
 
     // Calculates total log of bound (upper boundary)
     pub fn bound_log2(bound: usize) -> usize {
@@ -365,7 +310,59 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
     }
 
     fn access(&self, i: u64) -> Option<&T> {
-        unimplemented!();
+        // Upper bound and its log to base 2
+        let bound = Self::alphabet_bound(self.alphabet.len());
+        let log = Self::bound_log2(bound);
+
+        // Defines how the Alphabet is partitioned
+        let partition = Self::partition_alphabet(bound, self.alphabet.len());
+
+        // Returns if Alphabet is empty == Empty String
+        if self.alphabet.len() == 0 {return Option::None;}
+        // Returns Result for one Symbol in Alphabet
+        if self.alphabet.len() == 1 {
+            if i < self.bitmap.bits().len() {
+                return Option::Some(&self.alphabet[0]);
+            } else {
+                return Option::None;
+            }
+        }
+        // Returns if Index out of Bounds
+        if i >= self.bitmap.bits().len() / (log as u64) {
+            return Option::None
+        }
+        
+        // Calculates index, start and end of each new Layer till second to last Layer
+        let mut index = i as u64;
+        let level_len = self.bitmap.bits().len() / (log as u64);
+        let mut depth_start = 0;
+        let mut start = 0;
+        let mut end = level_len - 1;
+        let mut start_index = 0;
+        let mut end_index = partition.len();
+        while (end_index - start_index) > 1 {
+            if self.bitmap.get(depth_start + start + index) {
+                start_index = (start_index + end_index) / 2;
+                if index > 0 {index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};}
+                start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
+            } else {
+                end_index = (start_index + end_index) / 2;
+                if index > 0 {index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};}
+                end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
+            }
+            depth_start += level_len;
+        }
+
+        // Returns Result for last Layer
+        if partition[start_index] {
+            if self.bitmap.get(depth_start + start + index) {
+                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)+1]);
+            } else {
+                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
+            }
+        } else {
+            return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
+        }
     }
 }
 
