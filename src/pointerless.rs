@@ -1,5 +1,6 @@
 use bio::data_structures::rank_select::RankSelect;
 use bv::BitVec;
+use rand::Rng;
 
 pub struct PointerlessWaveletTree<T: PartialOrd + Clone> {
     alphabet: Vec<T>,
@@ -180,21 +181,22 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         let bound = Self::alphabet_bound(self.alphabet.len());
         let log = Self::bound_log2(bound);
 
+        // Returns if Alphabet is empty == Empty String or Alphabet does not contain Symbol
+        if (self.alphabet.len() == 0) || !self.alphabet.contains(symbol) {return Option::Some(0);}
+        // Returns Result for one Symbol in Alphabet
+        if (self.alphabet.len() == 1) && self.alphabet.contains(symbol) {
+            if i < self.bitmap.bits().len() {
+                return Option::Some(i+1);
+            } else {
+                return Option::None;
+            }
+        }
+        if i >= self.bitmap.bits().len() / (log as u64) {return Option::None;}
+
         // Defines how the Alphabet is partitioned
         let partition = Self::partition_alphabet(bound, self.alphabet.len());
         let symbol_in_alphabet = self.alphabet.iter().position(|x| x == symbol).unwrap_or_default();
         let symbol_index = Self::partition_slice(&partition, symbol_in_alphabet);
-
-        // Returns if Alphabet is empty == Empty String or Alphabet does not contain Symbol
-        if (self.alphabet.len() == 0) || !self.alphabet.contains(symbol) {return Some(0);}
-        // Returns Result for one Symbol in Alphabet
-        if (self.alphabet.len() == 1) && self.alphabet.contains(symbol) {
-            if i < self.bitmap.bits().len() {
-                return Some(i+1);
-            } else {
-                return Some(self.bitmap.bits().len());
-            }
-        }
 
         // Calculates index, start and end of each new Layer till second to last Layer, while returning 0 if index smaller than first occurence of symbol
         let mut index = i as u64;
@@ -204,17 +206,16 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         let mut end = level_len - 1;
         let mut start_index = 0;
         let mut end_index = partition.len();
-        if index >= end {index = end;}
         while (end_index - start_index) > 1 {
             if symbol_index >= ((start_index + end_index) / 2) {
                 start_index = (start_index + end_index) / 2;
-                if index == 0 && !self.bitmap.get(depth_start + start) {return Some(0);}
-                if index > 0 {index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};}
+                if self.bitmap.rank_1(depth_start + start + index).unwrap() == self.bitmap.rank_1(depth_start + start).unwrap() && !self.bitmap.get(depth_start + start) {return Option::Some(0);}
+                index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};
                 start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
             } else {
                 end_index = (start_index + end_index) / 2;
-                if index == 0 && self.bitmap.get(depth_start + start) {return Some(0);}
-                if index > 0 {index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};}
+                if self.bitmap.rank_0(depth_start + start + index).unwrap() == self.bitmap.rank_0(depth_start + start).unwrap() && self.bitmap.get(depth_start + start) {return Option::Some(0);}
+                index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
                 end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
             }
             depth_start += level_len;
@@ -223,12 +224,12 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         // Returns Result for last Layer
         if partition[start_index] {
             if symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1 {
-                return Some(self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0});
+                return Option::Some(self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0});
             } else {
-                return Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0});
+                return Option::Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0});
             }
         } else {
-            return Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + 1);
+            return Option::Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + 1);
         }
     }
 
@@ -236,22 +237,22 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         // Upper bound and its log to base 2
         let bound = Self::alphabet_bound(self.alphabet.len());
         let log = Self::bound_log2(bound);
-
-        // Defines how the Alphabet is partitioned
-        let partition = Self::partition_alphabet(bound, self.alphabet.len());
-        let symbol_in_alphabet = self.alphabet.iter().position(|x| x == symbol).unwrap_or_default();
-        let symbol_index = Self::partition_slice(&partition, symbol_in_alphabet);
-
+        
         // Returns if Alphabet is empty == Empty String or Alphabet does not contain Symbol or index too small
         if (self.alphabet.len() == 0) || !self.alphabet.contains(symbol) || i == 0 {return Option::None;}
         // Returns Result for one Symbol in Alphabet
         if (self.alphabet.len() == 1) && self.alphabet.contains(symbol) {
-            if i < self.bitmap.bits().len() {
+            if i <= self.bitmap.bits().len() {
                 return Option::Some(i-1);
             } else {
                 return Option::None;
             }
         }
+
+        // Defines how the Alphabet is partitioned
+        let partition = Self::partition_alphabet(bound, self.alphabet.len());
+        let symbol_in_alphabet = self.alphabet.iter().position(|x| x == symbol).unwrap_or_default();
+        let symbol_index = Self::partition_slice(&partition, symbol_in_alphabet);
 
         // Vectors for traversing tree upwards after traversing downwards
         let mut start_points: Vec<u64> = Vec::new();
@@ -539,6 +540,44 @@ mod tests {
         for symbol in tree.alphabet.clone().into_iter().rev() {
             assert_eq!(Some(pos), tree.select(&symbol, 1));
             pos = pos + 1;
+        }
+    }
+
+    #[test]
+    fn test_pointerless_randomized_access_rank_select() {
+        // Time Nedded ~ 5-10 min
+        let mut numbergen = rand::thread_rng();
+        for size in 1..256 {
+            // Build Alphabet
+            let mut alphabet: Vec<u64> = Vec::new();
+            for i in 0..size {alphabet.push(i);}
+
+            // Build Number Vector
+            let mut numbers: Vec<u64> = alphabet.to_vec();
+            for _j in 0..(32+size/4-(size*size)/1024) {numbers.push(numbers[numbergen.gen_range(0, size) as usize]);}
+            let tree = PointerlessWaveletTree::from_slice(&numbers);
+
+            // Test Access Valid+Invalid
+            for i in 0..numbers.len() {assert_eq!(Option::Some(&numbers[i]), tree.access(i as u64));}
+            for i in numbers.len()..numbers.len()+256 {assert_eq!(Option::None, tree.access(i as u64));}
+
+            for symbol in 0..size {
+                let mut count = 0;
+                // Test Rank Valid
+                for index in 0..numbers.len() {
+                    if numbers[index] == symbol {count += 1;}
+                    assert_eq!(Option::Some(count as u64), tree.rank(&symbol, index as u64))
+                }
+                // Test Rank Invalid
+                for index in numbers.len()..numbers.len()+500 {assert_eq!(Option::None, tree.rank(&symbol, index as u64))}
+                // Test Select Valid
+                let mut index = 0;
+                for j in 1..count+1 {
+                    for k in index..numbers.len() {if numbers[k] != symbol {index += 1;} else {break;}}
+                    //assert_eq!(index as u64, tree.select(&symbol, j as u64).unwrap());
+                    index += 1;
+                };
+            }
         }
     }
 }

@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 bio = "0.28.1"
 bv = "0.10.0"
+rand = "0.7.0"

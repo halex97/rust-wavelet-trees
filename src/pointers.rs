@@ -1,5 +1,6 @@
 use bio::data_structures::rank_select::RankSelect;
 use bv::BitVec;
+use rand::Rng;
 
 pub struct PointerWaveletTree<T: PartialOrd + Clone> {
     alphabet: Vec<T>,
@@ -299,5 +300,43 @@ mod tests {
         assert_eq!(None, tree.rank(& 'a', 20));
         // unknown symbol
         assert_eq!(None, tree.rank(& 'x', 19));
+    }
+
+    #[test]
+    fn test_randomized_access_rank_select() {
+        // Time Nedded ~ 3-5 min
+        let mut numbergen = rand::thread_rng();
+        for size in 1..256 {
+            // Build Alphabet
+            let mut alphabet: Vec<u64> = Vec::new();
+            for i in 0..size {alphabet.push(i);}
+
+            // Build Number Vector
+            let mut numbers: Vec<u64> = alphabet.to_vec();
+            for _j in 0..(32+size/4-(size*size)/1024) {numbers.push(numbers[numbergen.gen_range(0, size) as usize]);}
+            let tree = PointerWaveletTree::from_slice(&numbers);
+
+            // Test Access Valid+Invalid
+            for i in 0..numbers.len() {assert_eq!(Option::Some(&numbers[i]), tree.access(i as u64));}
+            for i in numbers.len()..numbers.len()+256 {assert_eq!(Option::None, tree.access(i as u64));}
+
+            for symbol in 0..size {
+                let mut count = 0;
+                // Test Rank Valid
+                for index in 0..numbers.len() {
+                    if numbers[index] == symbol {count += 1;}
+                    assert_eq!(Option::Some(count as u64), tree.rank(&symbol, index as u64))
+                }
+                // Test Rank Invalid
+                for index in numbers.len()..numbers.len()+500 {assert_eq!(Option::None, tree.rank(&symbol, index as u64))}
+                // Test Select Valid
+                let mut index = 0;
+                for j in 1..count+1 {
+                    for k in index..numbers.len() {if numbers[k] != symbol {index += 1;} else {break;}}
+                    //assert_eq!(index as u64, tree.select(&symbol, j as u64).unwrap());
+                    index += 1;
+                };
+            }
+        }
     }
 }
