@@ -24,29 +24,6 @@ impl <T: PartialOrd + Clone> std::fmt::Debug for PointerlessWaveletTree<T> {
 
 impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
 
-    pub fn from_sequence(sequence: &[T]) -> Self {
-        // Create a vector for storing the alphabet of the sequence
-        let mut alphabet = Vec::new();
-
-        // Add all symbols from the sequence to the new alphabet vector
-        for symbol in sequence.iter() {
-            if !alphabet.contains(symbol) {
-                alphabet.push(symbol.clone());
-            }
-        }
-
-        // Sort the alphabet
-        alphabet.sort_by(|x,y| x.partial_cmp(y).unwrap());
-
-        let bitmap = Self::create_bits(sequence, &alphabet);
-
-        // Return a new PointerWaveletTree containing the alphabet and the root of the tree
-        PointerlessWaveletTree {
-            alphabet,
-            bitmap
-        }
-    }
-
     /// Create new Pointerless Wavelet Tree
     pub fn create_bits(sequence: &[T], alphabet: &[T]) -> RankSelect {
         if sequence.is_empty() {
@@ -163,7 +140,97 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         }
     }
 
-    pub fn rank(&self, symbol: &T, i: u64) -> u64 {
+    // Calculates total log of bound (upper boundary)
+    pub fn bound_log2(bound: usize) -> usize {
+        let mut log = 0;
+        let mut new_bound = 1;
+        while new_bound < bound {
+            log += 1;
+            new_bound *= 2;
+        }
+        log
+    }
+
+    // Calculates smallest total number d with alphabet.length <= 2^d
+    pub fn alphabet_bound(alphabetlen: usize) -> usize {
+        let mut bound = 1;
+        while bound < alphabetlen {
+            bound *= 2;
+        };
+        bound
+    }
+
+    // Calculates how the Alphabet is partitioned in Tree, true -> symbol in greatest depth, false -> symbol in second-greatest depth
+    pub fn partition_alphabet(bound: usize, alphabetlen: usize) -> Vec<bool> {
+        let mut part: Vec<bool> = Vec::new();
+
+        for i in 0..bound/2 {
+            part.push(i < (bound/2 + alphabetlen - bound));
+        }
+
+        part
+    }
+
+    // Calculates Symbol Count in Partition up to index
+    pub fn partition_sum(partition: &Vec<bool>, index: usize) -> usize {
+        let mut sum = 0;
+        for i in 0..index {
+            if partition[i] {
+                sum += 2;
+            }
+            else {
+                sum += 1;
+            }
+        }
+        sum
+    }
+
+    // Calculates index in Partition from index in Alphabet
+    pub fn partition_slice(partition: &Vec<bool>, index: usize) -> usize {
+        let mut slice = 0;
+        for i in 0..partition.len()-1 {
+            if partition[i] {
+                slice += 2;
+            } else {
+                slice += 1;
+            }
+            if slice > index {
+                return i;
+            } else if slice == index {
+                return i+1;
+            }
+        }
+        partition.len()-1
+    }
+
+}
+
+impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T> {
+    
+    fn from_slice(sequence: &[T]) -> Self {
+        // Create a vector for storing the alphabet of the sequence
+        let mut alphabet = Vec::new();
+
+        // Add all symbols from the sequence to the new alphabet vector
+        for symbol in sequence.iter() {
+            if !alphabet.contains(symbol) {
+                alphabet.push(symbol.clone());
+            }
+        }
+
+        // Sort the alphabet
+        alphabet.sort_by(|x,y| x.partial_cmp(y).unwrap());
+
+        let bitmap = Self::create_bits(sequence, &alphabet);
+
+        // Return a new PointerWaveletTree containing the alphabet and the root of the tree
+        PointerlessWaveletTree {
+            alphabet,
+            bitmap
+        }
+    }
+
+    fn rank(&self, symbol: &T, i: u64) -> Option<u64> {
         // Upper bound and its log to base 2
         let bound = Self::alphabet_bound(self.alphabet.len());
         let log = Self::bound_log2(bound);
@@ -174,13 +241,13 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         let symbol_index = Self::partition_slice(&partition, symbol_in_alphabet);
 
         // Returns if Alphabet is empty == Empty String or Alphabet does not contain Symbol
-        if (self.alphabet.len() == 0) || !self.alphabet.contains(symbol) {return 0;}
+        if (self.alphabet.len() == 0) || !self.alphabet.contains(symbol) {return Some(0);}
         // Returns Result for one Symbol in Alphabet
         if (self.alphabet.len() == 1) && self.alphabet.contains(symbol) {
             if i < self.bitmap.bits().len() {
-                return i+1;
+                return Some(i+1);
             } else {
-                return self.bitmap.bits().len();
+                return Some(self.bitmap.bits().len());
             }
         }
 
@@ -196,12 +263,12 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         while (end_index - start_index) > 1 {
             if symbol_index >= ((start_index + end_index) / 2) {
                 start_index = (start_index + end_index) / 2;
-                if index == 0 && !self.bitmap.get(depth_start + start) {return 0;}
+                if index == 0 && !self.bitmap.get(depth_start + start) {return Some(0);}
                 if index > 0 {index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};}
                 start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
             } else {
                 end_index = (start_index + end_index) / 2;
-                if index == 0 && self.bitmap.get(depth_start + start) {return 0;}
+                if index == 0 && self.bitmap.get(depth_start + start) {return Some(0);}
                 if index > 0 {index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};}
                 end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
             }
@@ -211,16 +278,16 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         // Returns Result for last Layer
         if partition[start_index] {
             if symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1 {
-                return self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0};
+                return Some(self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0});
             } else {
-                return self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
+                return Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0});
             }
         } else {
-            return self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + 1;
+            return Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + 1);
         }
     }
 
-    pub fn select(&self, symbol: &T, i: u64) -> Option<u64> {
+    fn select(&self, symbol: &T, i: u64) -> Option<u64> {
         // Upper bound and its log to base 2
         let bound = Self::alphabet_bound(self.alphabet.len());
         let log = Self::bound_log2(bound);
@@ -297,82 +364,6 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
         return Option::Some(index);
     }
 
-    // Calculates total log of bound (upper boundary)
-    pub fn bound_log2(bound: usize) -> usize {
-        let mut log = 0;
-        let mut new_bound = 1;
-        while new_bound < bound {
-            log += 1;
-            new_bound *= 2;
-        }
-        log
-    }
-
-    // Calculates smallest total number d with alphabet.length <= 2^d
-    pub fn alphabet_bound(alphabetlen: usize) -> usize {
-        let mut bound = 1;
-        while bound < alphabetlen {
-            bound *= 2;
-        };
-        bound
-    }
-
-    // Calculates how the Alphabet is partitioned in Tree, true -> symbol in greatest depth, false -> symbol in second-greatest depth
-    pub fn partition_alphabet(bound: usize, alphabetlen: usize) -> Vec<bool> {
-        let mut part: Vec<bool> = Vec::new();
-
-        for i in 0..bound/2 {
-            part.push(i < (bound/2 + alphabetlen - bound));
-        }
-
-        part
-    }
-
-    // Calculates Symbol Count in Partition up to index
-    pub fn partition_sum(partition: &Vec<bool>, index: usize) -> usize {
-        let mut sum = 0;
-        for i in 0..index {
-            if partition[i] {
-                sum += 2;
-            }
-            else {
-                sum += 1;
-            }
-        }
-        sum
-    }
-
-    // Calculates index in Partition from index in Alphabet
-    pub fn partition_slice(partition: &Vec<bool>, index: usize) -> usize {
-        let mut slice = 0;
-        for i in 0..partition.len()-1 {
-            if partition[i] {
-                slice += 2;
-            } else {
-                slice += 1;
-            }
-            if slice > index {
-                return i;
-            } else if slice == index {
-                return i+1;
-            }
-        }
-        partition.len()-1
-    }
-
-}
-
-impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T> {
-    fn from_slice(sequence: &[T]) -> Self {
-        unimplemented!();
-    }
-
-    fn rank(&self, c: &T, i: u64) -> Option<u64> {
-        unimplemented!();
-    }
-    fn select(&self, c: &T, i: u64) -> Option<u64> {
-        unimplemented!();
-    }
     fn access(&self, i: u64) -> Option<&T> {
         unimplemented!();
     }
@@ -381,12 +372,13 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::*;
 
     #[test]
     fn test_pointerless_wavelet_tree_from_sequence() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         // The correct alphabet should automatically be created
         assert_eq!(tree.alphabet, vec![' ','a','b','d','l','r']);
@@ -422,7 +414,7 @@ mod tests {
     fn test_pointerless_access_inside_range() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         assert_eq!(Some('a').as_ref(), tree.access(0));
         assert_eq!(Some('l').as_ref(), tree.access(1));
@@ -450,7 +442,7 @@ mod tests {
     fn test_pointerless_access_out_of_range() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         assert_eq!(None, tree.access(20));
     }
@@ -459,7 +451,7 @@ mod tests {
     fn test_pointerless_select_first_appearance_of_each_symbol() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         assert_eq!(Some(0), tree.select(&'a', 1));
         assert_eq!(Some(1), tree.select(&'l', 1));
@@ -473,7 +465,7 @@ mod tests {
     fn test_pointerless_select_all_appearances_of_one_symbol() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         assert_eq!(Some(0), tree.select(&'a', 1));
         assert_eq!(Some(2), tree.select(&'a', 2));
@@ -490,7 +482,7 @@ mod tests {
     fn test_pointerless_select_invalid_argument() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         // Out of range
         assert_eq!(None, tree.select(&'a', 20));
@@ -506,7 +498,7 @@ mod tests {
     fn test_pointerless_select_all_valid_arguments() {
         let text = "The quick brown fox jumps over a lazy dog";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         let mut alphabet = Vec::new();
         for symbol in sequence.iter() {
@@ -531,7 +523,7 @@ mod tests {
     fn test_pointerless_select_ascending_alphabet_as_sequence() {
         let text = "abcdefghijklmnopqrstuvwxyz";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         let mut pos = 0;
         for symbol in tree.alphabet.clone().into_iter() {
@@ -544,7 +536,7 @@ mod tests {
     fn test_pointerless_select_descending_alphabet_as_sequence() {
         let text = "zyxwvutsrqponmlkjihgfedcba";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerlessWaveletTree::from_sequence(sequence);
+        let tree = PointerlessWaveletTree::from_slice(sequence);
 
         let mut pos = 0;
         for symbol in tree.alphabet.clone().into_iter().rev() {
