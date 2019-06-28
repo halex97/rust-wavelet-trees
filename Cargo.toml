@@ -5,5 +5,5 @@ authors = ["Alexander Hahn <43539214+halex97@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
-bio = "0.26.1"
+bio = "0.28.1"
 bv = "0.10.0"

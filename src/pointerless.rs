@@ -276,28 +276,10 @@ impl <T: PartialOrd + Clone> PointerlessWaveletTree<T> {
             if symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1 {
                 interim_result = index + self.bitmap.rank_1(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0} + 1;
                 if index >= self.bitmap.rank_1(depth_start + end).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0} {return Option::None;}
-                // Necessary for bug fixing
-                else if interim_result == self.bitmap.rank_1(self.bitmap.bits().len()-1).unwrap() {
-                    for counter in (start..end+1).rev() {
-                        if self.bitmap.get(depth_start + counter as u64) {
-                            index = counter - start;
-                            break;
-                        }
-                    }
-                }
                 else {index = self.bitmap.select_1(interim_result).unwrap() - depth_start - start;}
             } else {
                 interim_result = index + self.bitmap.rank_0(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0} + 1;
                 if index >= self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0} {return Option::None;}
-                // Necessary for bug fixing
-                else if interim_result == self.bitmap.rank_0(self.bitmap.bits().len()-1).unwrap() {
-                    for counter in (start..end+1).rev() {
-                        if !self.bitmap.get(depth_start + counter as u64) {
-                            index = counter - start;
-                            break;
-                        }
-                    }
-                }
                 else {index = self.bitmap.select_0(interim_result).unwrap() - depth_start - start;}
             }
         } else {
