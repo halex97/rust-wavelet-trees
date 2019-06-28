@@ -2,14 +2,14 @@ use bio::data_structures::rank_select::RankSelect;
 use bv::BitVec;
 use petgraph::graph::Graph;
 
-pub struct LabelledGraphWaveletTree {
+pub struct LabelledGraphWaveletTree<T> {
     graphTree: WaveletGraph,
     labels: Vec<T>
 }
 
 pub struct GraphWaveletTree {
     /// The wavelet tree represents the concatenated adjacency lists of the graph
-    tree: WaveletTree<u64>,
+    tree: WaveletTree<usize>,
     /// The bitmap marks the beginnings of the adjacency lists
     bitmap: RankSelect
 }
@@ -23,15 +23,15 @@ impl GraphWaveletTree {
         unimplemented!();
     }
 
-    pub fn predecessor(&self, index: u64) -> u64 {
+    pub fn predecessor(&self, index: usize) -> NodeIndex {
         unimplemented!();
     }
 
-    pub fn successor(&self, index: u64) -> u64 {
+    pub fn successor(&self, index: usize) -> NodeIndex {
         unimplemented!();
     }
 
-    pub fn edge_exists(&self, predecessor: u64, successor: u64) -> bool {
+    pub fn edge_exists(&self, predecessorIndex: usize, successorIndex: usize) -> bool {
         unimplemented!();
     }
 
