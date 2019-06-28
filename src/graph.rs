@@ -24,7 +24,7 @@ impl <T: PartialOrd + Clone> WaveletGraph<T> {
         unimplemented!();
     }
 
-    pub fn edge_exits(&self, predecessor: &T, successor: &T) -> bool {
+    pub fn edge_exists(&self, predecessor: &T, successor: &T) -> bool {
         unimplemented!();
     }
 
