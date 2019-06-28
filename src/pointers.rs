@@ -6,8 +6,9 @@ pub struct PointerWaveletTree<T: PartialOrd + Clone> {
     root: WaveletTreeNode
 }
 
-impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
-    pub fn from_sequence(sequence: &[T]) -> Self {
+impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerWaveletTree<T> {
+
+    fn from_slice(sequence: &[T]) -> Self {
         // Create a vector for storing the alphabet of the sequence
         let mut alphabet = Vec::new();
 
@@ -29,12 +30,6 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
             alphabet,
             root
         }
-    }
-}
-
-impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerWaveletTree<T> {
-    fn from_slice(sequence: &[T]) -> Self {
-        unimplemented!();
     }
     
     /// Access element at index i in the sequence
@@ -204,10 +199,10 @@ mod tests {
     }
 
     #[test]
-    fn test_pointer_wavelet_tree_new() {
+    fn test_from_slice() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let pwt = PointerWaveletTree::from_sequence(sequence);
+        let pwt = PointerWaveletTree::from_slice(sequence);
 
         // The correct alphabet should automatically be created
         assert_eq!(pwt.alphabet, vec![' ','a','b','d','l','r']);
@@ -221,7 +216,7 @@ mod tests {
     fn test_access_inside_range() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let pwt = PointerWaveletTree::from_sequence(sequence);
+        let pwt = PointerWaveletTree::from_slice(sequence);
 
         assert_eq!(pwt.access(0), Some('a').as_ref());
         assert_eq!(pwt.access(1), Some('l').as_ref());
@@ -249,7 +244,7 @@ mod tests {
     fn test_access_out_of_range() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let pwt = PointerWaveletTree::from_sequence(sequence);
+        let pwt = PointerWaveletTree::from_slice(sequence);
 
         assert_eq!(pwt.access(20), None);
     }
@@ -258,7 +253,7 @@ mod tests {
     fn test_rank_first_appearance() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerWaveletTree::from_sequence(sequence);
+        let tree = PointerWaveletTree::from_slice(sequence);
 
         // returns 0 before first appearance
         assert_eq!(Some(0), tree.rank('l', 0));
@@ -281,7 +276,7 @@ mod tests {
     fn test_rank_all_appearances_of_one_symbol() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerWaveletTree::from_sequence(sequence);
+        let tree = PointerWaveletTree::from_slice(sequence);
         
         assert_eq!(Some(1), tree.rank('a', 0));
         assert_eq!(Some(2), tree.rank('a', 2));
@@ -298,7 +293,7 @@ mod tests {
     fn test_rank_invalid_argument() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
-        let tree = PointerWaveletTree::from_sequence(sequence);
+        let tree = PointerWaveletTree::from_slice(sequence);
         
         // out of range
         assert_eq!(None, tree.rank('a', 20));
