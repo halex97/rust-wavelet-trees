@@ -1,7 +1,9 @@
 use bio::data_structures::rank_select::RankSelect;
 use bv::BitVec;
 use rand::Rng;
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct PointerlessWaveletTree<T: PartialOrd + Clone> {
     alphabet: Vec<T>,
     bitmap: RankSelect
@@ -546,6 +548,17 @@ mod tests {
     #[test]
     fn test_pointerless_randomized_access_rank_select() {
         // Time Nedded ~ 5-10 min
+        PointerlessWaveletTree::from_slice(&Vec::<u64>::new());
+        let mut sequence: Vec<u64> = Vec::new();
+        sequence.push(1);
+        let tree = PointerlessWaveletTree::from_slice(&sequence);
+        assert_eq!(Option::Some(&1), tree.access(0));
+        assert_eq!(Option::None, tree.access(1));
+        assert_eq!(Option::Some(1), tree.rank(&1, 0));
+        assert_eq!(Option::None, tree.rank(&1, 1));
+        assert_eq!(Option::Some(0), tree.select(&1, 1));
+        assert_eq!(Option::None, tree.rank(&1, 2));
+
         let mut numbergen = rand::thread_rng();
         for size in 1..256 {
             // Build Alphabet

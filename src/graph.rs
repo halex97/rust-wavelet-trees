@@ -1,12 +1,15 @@
 use bio::data_structures::rank_select::RankSelect;
 use bv::BitVec;
 use petgraph::graph::Graph;
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct LabelledGraphWaveletTree<T> {
-    graphTree: WaveletGraph,
+    graphTree: GraphWaveletTree,
     labels: Vec<T>
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct GraphWaveletTree {
     /// The wavelet tree represents the concatenated adjacency lists of the graph
     tree: WaveletTree<usize>,
@@ -34,5 +37,16 @@ impl GraphWaveletTree {
     pub fn edge_exists(&self, predecessorIndex: usize, successorIndex: usize) -> bool {
         unimplemented!();
     }
+
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::*;
+
+    #[test]
+
 
 }

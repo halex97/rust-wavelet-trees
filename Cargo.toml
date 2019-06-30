@@ -8,3 +8,4 @@ edition = "2018"
 bio = "0.28.1"
 bv = "0.10.0"
 rand = "0.7.0"
+serde = { version = "1.0", features = ["derive"] }
