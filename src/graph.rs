@@ -1,18 +1,10 @@
 use bio::data_structures::rank_select::RankSelect;
-use bv::{BitVec, BitsMut};
+use bv::BitVec;
 use petgraph::EdgeType;
-use petgraph::graph::{Graph, NodeIndices, NodeIndex, Neighbors, DefaultIx, IndexType};
+use petgraph::graph::{Graph, Neighbors, IndexType};
 use serde::{Serialize, Deserialize};
-
 use crate::WaveletTree;
 use crate::pointerless::PointerlessWaveletTree;
-use core::borrow::BorrowMut;
-
-#[derive(Serialize, Deserialize)]
-pub struct LabelledGraphWaveletTree<T> {
-    graphTree: GraphWaveletTree,
-    labels: Vec<T>
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct GraphWaveletTree {
@@ -95,18 +87,18 @@ impl GraphWaveletTree {
 
         // Now we can count the number of '1's up until position p0 in order to find out which
         // adjacency list the i-th occurence of v is in.
-        p0.map(|x| self.bitmap.rank_1(x) as usize)
+        p0.and_then(|x| self.bitmap.rank_1(x)).map(|x| x as usize)
     }
 
-    pub fn predecessor(&self, index: usize) -> NodeIndex {
+    pub fn neighbors(&self, index: usize) -> Vec<usize> {
         unimplemented!();
     }
 
-    pub fn successor(&self, index: usize) -> NodeIndex {
+    pub fn reverse_neighbors(&self, index: usize) -> Vec<usize> {
         unimplemented!();
     }
 
-    pub fn edge_exists(&self, predecessorIndex: usize, successorIndex: usize) -> bool {
+    pub fn edge_exists(&self, from: usize, to: usize) -> bool {
         unimplemented!();
     }
 
