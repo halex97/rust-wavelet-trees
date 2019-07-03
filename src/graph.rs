@@ -25,6 +25,9 @@ pub struct GraphWaveletTree {
 
 impl GraphWaveletTree {
 
+    /// Creates a new GraphWaveletTree from a graph. The resulting GraphWaveletTree's indices are
+    /// guaranteed to be in the same order as the graph's indices, but they are NOT guaranteed to
+    /// be THE SAME indices.
     pub fn from_graph<N,E,Ty:EdgeType,Ix:IndexType> (graph: Graph<N,E,Ty,Ix>) -> Self {
         let nodes = graph.node_indices();
 
@@ -63,6 +66,21 @@ impl GraphWaveletTree {
             tree: PointerlessWaveletTree::from_slice(sequence.as_slice()),
             bitmap: RankSelect::new(lists_bv, 1)
         }
+    }
+
+    /// Access the i-th neighbour (i.e. successor) of node v
+    pub fn access_neighbor(&self, v: usize, i: usize) -> Option<usize> {
+        // First we need to find the start of the adjacency list.
+        // Then we need to take into account that the bitmap is longer than the actual sequence
+        // because of the additional '1's.
+        // Finally we can add the index i to find the correct neighbor's index in the sequence of
+        // concatenated adjacency lists.
+        let n = self.bitmap.select_1(v as u64)
+            .map(|l| l - (v-1) as u64)
+            .map(|l| l + i as u64);
+
+        // Now we can look for the correct node index in the wavelet tree.
+        n.and_then(|x| self.tree.access(x)).map(|x| x.clone())
     }
 
     pub fn predecessor(&self, index: usize) -> NodeIndex {
