@@ -276,7 +276,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_rank_all_appearances_of_one_symbol() {
         let text = "alabar a la alabarda";
         let sequence : &Vec<char> = &text.chars().collect();
@@ -306,9 +305,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_randomized_access_rank_select() {
         // Time Nedded ~ 3-5 min
-        PointerWaveletTree::from_slice(&Vec::<u64>::new());
+        let result = std::panic::catch_unwind(|| {PointerWaveletTree::from_slice(&Vec::<u64>::new());});
+        assert!(result.is_err());
         let mut sequence: Vec<u64> = Vec::new();
         sequence.push(1);
         let tree = PointerWaveletTree::from_slice(&sequence);

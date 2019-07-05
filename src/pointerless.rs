@@ -545,6 +545,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_pointerless_randomized_access_rank_select() {
         // Time Nedded ~ 5-10 min
         PointerlessWaveletTree::from_slice(&Vec::<u64>::new());
