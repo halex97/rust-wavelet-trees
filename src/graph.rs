@@ -90,14 +90,41 @@ impl GraphWaveletTree {
         p0.and_then(|x| self.bitmap.rank_1(x)).map(|x| x as usize)
     }
 
-    pub fn neighbors(&self, index: usize) -> Vec<usize> {
-        unimplemented!();
+    /// Returns a vector containing all indices of the neighbors (successors) of the node given by
+    /// index v. If v has no neighbors, an empty vector is returned.
+    pub fn neighbors(&self, v: usize) -> Vec<usize> {
+        // Find the start of the adjacency list in the sequence (see access_neighbor for details)
+        let start = self.bitmap.select_1(v as u64)
+            .map(|l| l - (v-1) as u64)
+            .unwrap();
+
+        // Find the end of the adjacency list (i.e. usually the start of the next adjacency list).
+        // If v is the last node, the adjaceny list ends at the end of the sequence
+        let bitmap_length = self.bitmap.bits().len();
+        let sequence_length = bitmap_length - self.bitmap.rank_1(bitmap_length-1).unwrap_or(0);
+
+        let end = self.bitmap.select_1(v as u64 +1)
+            .map(|l| l - v as u64)
+            .unwrap_or(sequence_length);
+
+        // Compute how many neighbors v has.
+        let num_neighbors = (end - start) as usize;
+
+        // Fill a vector with all indices of v's neighbors.
+        let mut neighbors : Vec<usize> = Vec::with_capacity(num_neighbors);
+
+        for i in 0..num_neighbors {
+            neighbors.push(self.access_neighbor(v, i).unwrap());
+        }
+
+        neighbors
     }
 
     pub fn reverse_neighbors(&self, index: usize) -> Vec<usize> {
         unimplemented!();
     }
 
+    /// Returns whether an edge exists between the nodes given by the indices 'from' and 'to'.
     pub fn edge_exists(&self, from: usize, to: usize) -> bool {
         unimplemented!();
     }
