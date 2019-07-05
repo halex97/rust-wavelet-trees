@@ -279,7 +279,7 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
             start_points.push(start);
             mid = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
             mid_index = (start_index + end_index) / 2;
-            if symbol_index >= ((start_index + end_index) / 2) {
+            if symbol_index >= mid_index {
                 index_points.push(true);
                 start = mid;
                 start_index = mid_index;
