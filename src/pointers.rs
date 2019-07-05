@@ -71,7 +71,23 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerWaveletTree<T> {
     }
 
     fn select(&self, c: &T, i: u64) -> Option<u64> {
-        unimplemented!();
+        // If the given index is larger than the size of the bitmap (i.e. if it is larger than the amout of symbols in
+        // the sequence), no result can be returned.
+        // Otherwise the select() function of WaveletTreeNode is being called    
+        if i as u64 > self.root.bitmap.bits().len() {
+            None
+        } else {
+        // Compute select(q,i) on the root node (bitmap subrange [a, b), representing the whole alphabet)
+
+            // Find the index of q in the alphabet
+            let q_index : Option<usize> = self.alphabet.iter().position(|x| x == c);
+            
+            q_index.and_then(|q| self.root.select( q as u64, i, 0, self.alphabet.len() as usize))
+           
+            // If q could not be found in the alphabet, return None. Otherwise, return select_c(i).
+            //q_index.and_then(|qi| self.root.select(qi as u64, i, 0, self.alphabet.len() as usize))
+
+        }
     }
 }
 
@@ -167,6 +183,36 @@ impl WaveletTreeNode {
             } else {
                 self.right_child.as_ref()
                                 .and_then(|child| child.rank(c_index, self.bitmap.rank_1(i).unwrap()-1, center, b))
+            }
+        }
+    }
+
+    fn select (&self, q_index: u64, i: u64, a: usize, b: usize) -> Option<u64> {
+    //If the leaf is the leftchild of its parent v,then the position i´ corresponding to 
+    //i at v is the i-th occurrence of a 0 initsbitmap Bv.
+    let middle = (a+b)/2;
+    
+        if q_index >= middle as u64 {
+            let new_a = middle as usize;
+            let new_b = b;
+
+            if (new_b-new_a) <= 1 {
+                self.bitmap.select_1(i)
+            } else {
+                self.right_child.as_ref()
+                  .and_then(|child| child.select(q_index, i, new_a, new_b))
+                  .and_then(|p| self.bitmap.select_1(p+1)) // p : position of the i-th q in the right subtree
+            }
+        } else { 
+            let new_a = a;
+            let new_b = middle as usize;
+
+            if (new_b-new_a) <= 1 {
+                self.bitmap.select_0(i)
+            } else {
+                self.left_child.as_ref()
+                  .and_then(|child| child.select(q_index, i, new_a, new_b)) 
+                  .and_then(|p| self.bitmap.select_0(p+1))
             }
         }
     }
@@ -322,8 +368,8 @@ mod tests {
         assert_eq!(Option::None, tree.access(1));
         assert_eq!(Option::Some(1), tree.rank(&1, 0));
         assert_eq!(Option::None, tree.rank(&1, 1));
-        //assert_eq!(Option::Some(0), tree.select(&1, 1));
-        //assert_eq!(Option::None, tree.rank(&1, 2));
+        assert_eq!(Option::Some(0), tree.select(&1, 1));
+        assert_eq!(Option::None, tree.rank(&1, 2));
 
         let mut numbergen = rand::thread_rng();
         for size in 1..256 {
@@ -353,9 +399,11 @@ mod tests {
                 let mut index = 0;
                 for j in 1..count+1 {
                     for k in index..numbers.len() {if numbers[k] != symbol {index += 1;} else {break;}}
-                    //assert_eq!(index as u64, tree.select(&symbol, j as u64).unwrap());
+                    assert_eq!(index as u64, tree.select(&symbol, j as u64).unwrap());
                     index += 1;
                 };
+                // Test Select Invalid
+                for j in count+1..count+256 {assert_eq!(Option::None, tree.select(&symbol, j as u64))}
             }
         }
     }
