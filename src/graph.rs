@@ -193,4 +193,28 @@ mod tests {
         assert_eq!(Some(&3), gwt.tree.access(7));
     }
 
+    #[test]
+    fn test_access_neighbor() {
+        let gwt = GraphWaveletTree::from_graph(example_graph());
+
+        assert_eq!(Some(1), gwt.access_neighbor(0, 1));
+        assert_eq!(Some(3), gwt.access_neighbor(0, 2));
+        assert_eq!(None, gwt.access_neighbor(0, 3));
+
+        assert_eq!(Some(0), gwt.access_neighbor(1, 1));
+        assert_eq!(Some(3), gwt.access_neighbor(1, 2));
+        assert_eq!(Some(2), gwt.access_neighbor(1, 3));
+        assert_eq!(None, gwt.access_neighbor(1, 4));
+
+        assert_eq!(None, gwt.access_neighbor(2, 1));
+
+        assert_eq!(Some(2), gwt.access_neighbor(3, 1));
+        assert_eq!(None, gwt.access_neighbor(3, 2));
+
+        assert_eq!(Some(0), gwt.access_neighbor(4, 1));
+        assert_eq!(Some(3), gwt.access_neighbor(4, 2));
+        assert_eq!(None, gwt.access_neighbor(4, 3));
+
+    }
+
 }
