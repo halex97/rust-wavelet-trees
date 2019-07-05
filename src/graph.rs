@@ -125,13 +125,25 @@ impl GraphWaveletTree {
         neighbors
     }
 
-    pub fn reverse_neighbors(&self, index: usize) -> Vec<usize> {
-        unimplemented!();
+    /// Returns a vector containing all indices of the reverse neighbors (predecessors) of the node given by
+    /// index v. If v has no reverse neighbors, an empty vector is returned.
+    pub fn reverse_neighbors(&self, v: usize) -> Vec<usize> {
+        // Get the number of occurences of v in the sequence. This is equal to the amount of v's reverse neighbors.
+        let num_v = self.tree.rank(&v, self.sequence_length()).unwrap_or(0) as usize;
+
+        // Fill a vector with all indices of v's reverse neighbors.
+        let mut reverse_neighbors : Vec<usize> = Vec::with_capacity(num_v);
+
+        for i in 1..num_v {
+            reverse_neighbors.push(self.access_reverse_neighbor(v, i).unwrap());
+        }
+
+        reverse_neighbors
     }
 
     /// Returns whether an edge exists between the nodes given by the indices 'from' and 'to'.
     pub fn edge_exists(&self, from: usize, to: usize) -> bool {
-        unimplemented!();
+        self.neighbors(from).contains(&to)
     }
 
     fn sequence_length(&self) -> u64 {
