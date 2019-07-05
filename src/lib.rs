@@ -46,6 +46,29 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
             index_in_alphabet.map(|index| &self.alphabet[index])
         }
     }
+      // returns the position of the  the i-th accurred symbol q in a sequence
+     pub fn select(&self, q: T, i: u64) -> Option<u64> {
+        // If the given index is larger than the size of the bitmap (i.e. if it is larger than the amout of symbols in
+        // the sequence), no result can be returned.
+        // Otherwise the select() function of WaveletTreeNode is being called    
+        if i as u64 >= self.root.bitmap.bits().len() {
+            None
+        }
+
+        else {
+        // Compute select(q,i) on the root node (bitmap subrange [a, b), representing the whole alphabet)
+
+             // Find the index of q in the alphabet
+            let q_index : Option<usize> = self.alphabet.iter().position(|x| x == &q);
+            
+            self.root.select( q_index.unwrap() as u64, i, 0, self.alphabet.len() as usize)
+           
+          // If q could not be found in the alphabet, return None. Otherwise, return select_c(i).
+         //q_index.and_then(|qi| self.root.select(qi as u64, i, 0, self.alphabet.len() as usize))
+
+        }
+     }
+
 
     /// Returns the number of appearances of symbol c in the sequence up until position i
     pub fn rank(&self, c: T, i: u64) -> Option<u64> {
@@ -128,6 +151,29 @@ impl WaveletTreeNode {
             }
         }
     }
+     // If the bitmap  of q contains a 1 at position i, look in the right subtree.
+        // Otherwise look in the left subtree.
+      
+      
+    fn select (&self, q_index: u64, i: u64, a: usize, b: usize) -> Option<u64> {
+     //If the leaf is the leftchild of its parent v,then the position i´ corresponding to 
+     //i at v is the i-th occurrence of a 0 initsbitmap Bv.
+     let btmp = &self.bitmap; 
+     let middle = (a+b)/2;
+     
+              if q_index > middle as u64 {
+                   self.right_child.as_ref().and_then(|child| child.select(q_index, btmp.select_1(i).unwrap() - 1, middle as usize, b))
+              }
+             
+              else if q_index < middle as u64 { 
+                  self.left_child.as_ref().and_then(|child| child.select(q_index, btmp.select_0(i).unwrap() - 1, a, middle as usize)) 
+              }
+             else{ Some(middle as u64)  }
+           
+    }
+    
+
+
 
     /// returns the rank of symbol alphabet[c_index] in the sequence
     /// [a,b) is the subrange of the alphabet that the current node represents
@@ -157,6 +203,7 @@ impl WaveletTreeNode {
             }
         }
     }
+
 }
 
 
@@ -297,4 +344,190 @@ mod tests {
         // unknown symbol
         assert_eq!(None, tree.rank('x', 19));
     }
+
+
+     #[test]
+
+    fn test_pointer_select_first_appearance_of_each_symbol() {
+
+        let text = "alabar a la alabarda";
+
+        let sequence : &Vec<char> = &text.chars().collect();
+
+        let tree = PointerWaveletTree::from_sequence(sequence);
+
+
+
+        assert_eq!(Some(0), tree.select('a', 1));
+
+        assert_eq!(Some(1), tree.select('l', 1));
+
+        assert_eq!(Some(3), tree.select('b', 1));
+
+        assert_eq!(Some(5), tree.select('r', 1));
+
+        assert_eq!(Some(6), tree.select(' ', 1));
+
+        assert_eq!(Some(18), tree.select('d', 1));
+
+    }
+
+
+
+    #[test]
+
+    fn test_pointer_select_all_appearances_of_one_symbol() {
+
+        let text = "alabar a la alabarda";
+
+        let sequence : &Vec<char> = &text.chars().collect();
+
+        let tree = PointerWaveletTree::from_sequence(sequence);
+
+
+
+        assert_eq!(Some(0), tree.select('a', 1));
+        assert_eq!(Some(2), tree.select('a', 2));
+        assert_eq!(Some(4), tree.select('a', 3));
+        assert_eq!(Some(7), tree.select('a', 4));
+        assert_eq!(Some(10), tree.select('a', 5));
+        assert_eq!(Some(12), tree.select('a', 6));
+        assert_eq!(Some(14), tree.select('a', 7));
+        assert_eq!(Some(16), tree.select('a', 8));
+        assert_eq!(Some(19), tree.select('a', 9));
+
+    }
+
+
+
+    #[test]
+
+    fn test_pointer_select_invalid_argument() {
+
+        let text = "alabar a la alabarda";
+        let sequence : &Vec<char> = &text.chars().collect();
+        let tree = PointerWaveletTree::from_sequence(sequence);
+
+
+
+        // Out of range
+
+        assert_eq!(None, tree.select('a', 20));
+
+        // Symbol not in alphabet
+
+        assert_eq!(None, tree.select('x', 1));
+
+        // i too high
+
+        assert_eq!(None, tree.select('d', 2));
+
+        assert_eq!(None, tree.select('l', 4));
+
+        assert_eq!(None, tree.select('r', 3));
+
+    }
+
+
+
+    #[test]
+
+    fn test_pointer_select_all_valid_arguments() {
+
+        let text = "The quick brown fox jumps over a lazy dog";
+
+        let sequence : &Vec<char> = &text.chars().collect();
+
+        let tree = PointerWaveletTree::from_sequence(sequence);
+
+
+
+        let mut alphabet = Vec::new();
+
+        for symbol in sequence.iter() {
+
+            if !alphabet.contains(symbol) {
+
+                alphabet.push(symbol.clone());
+
+            }
+
+        }
+
+        alphabet.sort_by(|x,y| x.partial_cmp(y).unwrap());
+
+
+
+        for i in 0..alphabet.len() {
+
+            let symbol = alphabet[i].clone();
+
+            let mut index = 0;
+
+            for j in 1..sequence.iter().filter(|&n| *n == symbol).count()+1 {
+
+                for k in index..sequence.len() {if sequence[k] != symbol {index += 1;} else {break;}}
+
+                assert_eq!(Option::Some(index as u64), tree.select(symbol, j as u64));
+
+                index += 1;
+
+            };
+
+        }
+
+    }
+
+
+
+    #[test]
+
+    fn test_pointer_select_ascending_alphabet_as_sequence() {
+
+        let text = "abcdefghijklmnopqrstuvwxyz";
+
+        let sequence : &Vec<char> = &text.chars().collect();
+
+        let tree = PointerWaveletTree::from_sequence(sequence);
+
+
+
+        let mut pos = 0;
+
+        for symbol in tree.alphabet.clone().into_iter() {
+
+            assert_eq!(Some(pos), tree.select(symbol, 1));
+
+            pos = pos + 1;
+
+        }
+
+    }
+
+
+
+    #[test]
+
+    fn test_pointer_select_descending_alphabet_as_sequence() {
+
+        let text = "zyxwvutsrqponmlkjihgfedcba";
+
+        let sequence : &Vec<char> = &text.chars().collect();
+
+        let tree = PointerWaveletTree::from_sequence(sequence);
+
+
+
+        let mut pos = 0;
+
+        for symbol in tree.alphabet.clone().into_iter().rev() {
+
+            assert_eq!(Some(pos), tree.select(symbol, 1));
+
+            pos = pos + 1;
+
+        }
+
+    }
+
 }
