@@ -227,6 +227,128 @@ mod tests {
         assert_eq!(Some(3), gwt.access_neighbor(4, 2));
         assert_eq!(None, gwt.access_neighbor(4, 3));
 
+        assert_eq!(None, gwt.access_neighbor(5, 1));
+
+    }
+
+    #[test]
+    fn test_access_reverse_neighbor() {
+        let gwt = GraphWaveletTree::from_graph(example_graph());
+
+        assert_eq!(Some(1), gwt.access_reverse_neighbor(0, 1));
+        assert_eq!(Some(4), gwt.access_reverse_neighbor(0, 2));
+        assert_eq!(None, gwt.access_reverse_neighbor(0, 3));
+
+        assert_eq!(Some(0), gwt.access_reverse_neighbor(1, 1));
+        assert_eq!(None, gwt.access_reverse_neighbor(1, 2));
+
+        assert_eq!(Some(1), gwt.access_reverse_neighbor(2, 1));
+        assert_eq!(Some(3), gwt.access_reverse_neighbor(2, 2));
+        assert_eq!(None, gwt.access_reverse_neighbor(2, 3));
+
+        assert_eq!(Some(0), gwt.access_reverse_neighbor(3, 1));
+        assert_eq!(Some(1), gwt.access_reverse_neighbor(3, 2));
+        assert_eq!(Some(4), gwt.access_reverse_neighbor(3, 3));
+        assert_eq!(None, gwt.access_reverse_neighbor(3, 4));
+
+        assert_eq!(None, gwt.access_reverse_neighbor(4, 1));
+
+        assert_eq!(None, gwt.access_reverse_neighbor(5, 1));
+
+    }
+
+    #[test]
+    fn test_neighbors() {
+        let gwt = GraphWaveletTree::from_graph(example_graph());
+
+        let mut n = gwt.neighbors(0); n.sort();
+        assert_eq!(vec![1, 3], n);
+
+        let mut n = gwt.neighbors(1); n.sort();
+        assert_eq!(vec![0, 2, 3], n);
+
+        let mut n = gwt.neighbors(2); n.sort();
+        assert_eq!(Vec::<usize>::new(), n);
+
+        let mut n = gwt.neighbors(3); n.sort();
+        assert_eq!(vec![2], n);
+
+        let mut n = gwt.neighbors(4); n.sort();
+        assert_eq!(vec![0, 3], n);
+
+        let mut n = gwt.neighbors(5); n.sort();
+        assert_eq!(Vec::<usize>::new(), n);
+    }
+
+    #[test]
+    fn test_reverse_neighbors() {
+        let gwt = GraphWaveletTree::from_graph(example_graph());
+
+        let mut n = gwt.reverse_neighbors(0); n.sort();
+        assert_eq!(vec![1, 4], n);
+
+        let mut n = gwt.reverse_neighbors(1); n.sort();
+        assert_eq!(vec![0], n);
+
+        let mut n = gwt.reverse_neighbors(2); n.sort();
+        assert_eq!(vec![1, 3], n);
+
+        let mut n = gwt.reverse_neighbors(3); n.sort();
+        assert_eq!(vec![0, 1, 4], n);
+
+        let mut n = gwt.reverse_neighbors(4); n.sort();
+        assert_eq!(Vec::<usize>::new(), n);
+
+        let mut n = gwt.reverse_neighbors(5); n.sort();
+        assert_eq!(Vec::<usize>::new(), n);
+    }
+
+    #[test]
+    fn test_edge_exists() {
+        let gwt = GraphWaveletTree::from_graph(example_graph());
+
+        assert_eq!(false, gwt.edge_exists(0, 0));
+        assert_eq!(true, gwt.edge_exists(0, 1));
+        assert_eq!(false, gwt.edge_exists(0, 2));
+        assert_eq!(true, gwt.edge_exists(0, 3));
+        assert_eq!(false, gwt.edge_exists(0, 4));
+        assert_eq!(false, gwt.edge_exists(0, 5));
+
+        assert_eq!(true, gwt.edge_exists(1, 0));
+        assert_eq!(false, gwt.edge_exists(1, 1));
+        assert_eq!(true, gwt.edge_exists(1, 2));
+        assert_eq!(true, gwt.edge_exists(1, 3));
+        assert_eq!(false, gwt.edge_exists(1, 4));
+        assert_eq!(false, gwt.edge_exists(1, 5));
+
+        assert_eq!(false, gwt.edge_exists(2, 0));
+        assert_eq!(false, gwt.edge_exists(2, 1));
+        assert_eq!(false, gwt.edge_exists(2, 2));
+        assert_eq!(false, gwt.edge_exists(2, 3));
+        assert_eq!(false, gwt.edge_exists(2, 4));
+        assert_eq!(false, gwt.edge_exists(2, 5));
+
+        assert_eq!(false, gwt.edge_exists(3, 0));
+        assert_eq!(false, gwt.edge_exists(3, 1));
+        assert_eq!(true, gwt.edge_exists(3, 2));
+        assert_eq!(false, gwt.edge_exists(3, 3));
+        assert_eq!(false, gwt.edge_exists(3, 4));
+        assert_eq!(false, gwt.edge_exists(3, 5));
+
+        assert_eq!(true, gwt.edge_exists(4, 0));
+        assert_eq!(false, gwt.edge_exists(4, 1));
+        assert_eq!(false, gwt.edge_exists(4, 2));
+        assert_eq!(true, gwt.edge_exists(4, 3));
+        assert_eq!(false, gwt.edge_exists(4, 4));
+        assert_eq!(false, gwt.edge_exists(4, 5));
+
+        assert_eq!(false, gwt.edge_exists(5, 0));
+        assert_eq!(false, gwt.edge_exists(5, 1));
+        assert_eq!(false, gwt.edge_exists(5, 2));
+        assert_eq!(false, gwt.edge_exists(5, 3));
+        assert_eq!(false, gwt.edge_exists(5, 4));
+        assert_eq!(false, gwt.edge_exists(5, 5));
+
     }
 
 }
