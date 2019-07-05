@@ -11,6 +11,11 @@ pub struct PointerWaveletTree<T: PartialOrd + Clone> {
 
 impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerWaveletTree<T> {
 
+    fn from_iterator(sequence: &mut dyn std::iter::Iterator<Item=T>) -> Self {
+        let vec_sequence: Vec<T> = sequence.collect();
+        return Self::from_slice(&vec_sequence);
+    }
+
     fn from_slice(sequence: &[T]) -> Self {
         // Create a vector for storing the alphabet of the sequence
         let mut alphabet = Vec::new();
