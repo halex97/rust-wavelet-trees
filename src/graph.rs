@@ -143,7 +143,7 @@ impl GraphWaveletTree {
 
     /// Returns whether an edge exists between the nodes given by the indices 'from' and 'to'.
     pub fn edge_exists(&self, from: usize, to: usize) -> bool {
-        unimplemented!();
+        self.neighbors(from).contains(&to)
     }
 
     fn sequence_length(&self) -> u64 {
