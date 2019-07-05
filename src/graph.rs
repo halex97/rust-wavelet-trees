@@ -43,14 +43,22 @@ impl GraphWaveletTree {
             // A '1' in the bit vector separates two adjacency lists.
             lists_bv.push(true);
 
+            // Create a sub sequence to collect the current adjacency list.
+            // This needs to be done because neighbors are listed in REVERSE order.
+            let mut subseq = Vec::new();
+
             // Iterate over all neighbors (i.e. adjacent nodes that appear in the list)
             for n in neighbors {
-                // Add the neighbor's index to the sequence
-                sequence.push(n.index());
+                // Add the neighbor's index to the end of the sub sequence 
+                subseq.push(n.index());
 
                 // '0's in the bit vector represent node indices in the adjacency lists
                 lists_bv.push(false);
             }
+
+            // Append the reversed sub sequence.
+            subseq.reverse();
+            sequence.append(&mut subseq);
         }
 
         // Return a pointerless wavelet tree representing the sequence together with the bitmap.
@@ -99,13 +107,10 @@ impl GraphWaveletTree {
             .unwrap();
 
         // Find the end of the adjacency list (i.e. usually the start of the next adjacency list).
-        // If v is the last node, the adjaceny list ends at the end of the sequence
-        let bitmap_length = self.bitmap.bits().len();
-        let sequence_length = bitmap_length - self.bitmap.rank_1(bitmap_length-1).unwrap_or(0);
-
+        // If v is the last node, the adjaceny list ends at the end of the sequence.
         let end = self.bitmap.select_1(v as u64 +1)
             .map(|l| l - v as u64)
-            .unwrap_or(sequence_length);
+            .unwrap_or(self.sequence_length());
 
         // Compute how many neighbors v has.
         let num_neighbors = (end - start) as usize;
@@ -113,7 +118,7 @@ impl GraphWaveletTree {
         // Fill a vector with all indices of v's neighbors.
         let mut neighbors : Vec<usize> = Vec::with_capacity(num_neighbors);
 
-        for i in 0..num_neighbors {
+        for i in 1..num_neighbors {
             neighbors.push(self.access_neighbor(v, i).unwrap());
         }
 
@@ -129,6 +134,11 @@ impl GraphWaveletTree {
         unimplemented!();
     }
 
+    fn sequence_length(&self) -> u64 {
+        let bitmap_length = self.bitmap.bits().len();
+        bitmap_length - self.bitmap.rank_1(bitmap_length-1).unwrap_or(0)
+    }
+
 }
 
 
@@ -136,10 +146,51 @@ impl GraphWaveletTree {
 mod tests {
     use super::*;
     use super::super::*;
+    use bv::bit_vec;
+
+    fn example_graph() -> Graph<&'static str, &'static str> {
+        let mut graph = Graph::<&str, &str>::new();
+
+        let v1 = graph.add_node("v1");
+        let v2 = graph.add_node("v2");
+        let v3 = graph.add_node("v3");
+        let v4 = graph.add_node("v4");
+        let v5 = graph.add_node("v5");
+        let v6 = graph.add_node("v6");
+
+        graph.extend_with_edges(&[
+            (v1,v2), (v1, v4),
+            (v2,v1), (v2, v4), (v2, v3),
+            (v4,v3),
+            (v5,v1), (v5,v4)
+        ]);
+
+        graph
+    }
 
     #[test]
     fn test_from_graph() {
-        unimplemented!();
+        let gwt = GraphWaveletTree::from_graph(example_graph());
+
+        let expected_bits = bit_vec![
+            true, false, false,
+            true, false, false, false,
+            true,
+            true, false,
+            true, false, false,
+            true
+        ];
+
+        assert_eq!(expected_bits, gwt.bitmap.bits());
+
+        assert_eq!(Some(&1), gwt.tree.access(0));
+        assert_eq!(Some(&3), gwt.tree.access(1));
+        assert_eq!(Some(&0), gwt.tree.access(2));
+        assert_eq!(Some(&3), gwt.tree.access(3));
+        assert_eq!(Some(&2), gwt.tree.access(4));
+        assert_eq!(Some(&2), gwt.tree.access(5));
+        assert_eq!(Some(&0), gwt.tree.access(6));
+        assert_eq!(Some(&3), gwt.tree.access(7));
     }
 
 }
