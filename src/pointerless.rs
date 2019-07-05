@@ -210,33 +210,33 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         let level_len = self.bitmap.bits().len() / (log as u64);
         let mut depth_start = 0;
         let mut start = 0;
+        let mut mid;
         let mut end = level_len - 1;
         let mut start_index = 0;
+        let mut mid_index;
         let mut end_index = partition.len();
         while (end_index - start_index) > 1 {
-            if symbol_index >= ((start_index + end_index) / 2) {
+            mid = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
+            mid_index = (start_index + end_index) / 2;
+            if symbol_index >= mid_index {
                 if self.bitmap.rank_1(depth_start + start + index).unwrap() == self.bitmap.rank_1(depth_start + start).unwrap() && !self.bitmap.get(depth_start + start) {return Option::Some(0);}
                 index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};
-                start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
-                start_index = (start_index + end_index) / 2;
+                start = mid;
+                start_index = mid_index;
             } else {
                 if self.bitmap.rank_0(depth_start + start + index).unwrap() == self.bitmap.rank_0(depth_start + start).unwrap() && self.bitmap.get(depth_start + start) {return Option::Some(0);}
                 index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
-                end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
-                end_index = (start_index + end_index) / 2;
+                end = mid - 1;
+                end_index = mid_index;
             }
             depth_start += level_len;
         }
 
         // Returns Result for last Layer
-        if partition[start_index] {
-            if symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1 {
-                return Option::Some(self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0});
-            } else {
-                return Option::Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0});
-            }
+        if partition[start_index] && (symbol_in_alphabet >= Self::partition_sum(&partition, start_index)+1) {
+            return Option::Some(self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {1} else {0});
         } else {
-            return Option::Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + 1);
+            return Option::Some(self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0});
         }
     }
 
@@ -270,19 +270,23 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         let level_len = self.bitmap.bits().len() / (log as u64);
         let mut depth_start = 0;
         let mut start = 0;
+        let mut mid;
         let mut end = level_len - 1;
         let mut start_index = 0;
+        let mut mid_index;
         let mut end_index = partition.len();
         while (end_index - start_index) > 1 {
             start_points.push(start);
+            mid = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
+            mid_index = (start_index + end_index) / 2;
             if symbol_index >= ((start_index + end_index) / 2) {
                 index_points.push(true);
-                start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
-                start_index = (start_index + end_index) / 2;
+                start = mid;
+                start_index = mid_index;
             } else {
                 index_points.push(false);
-                end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
-                end_index = (start_index + end_index) / 2;
+                end = mid - 1;
+                end_index = mid_index;
             }
             depth_start += level_len;
         }
@@ -304,8 +308,9 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         while start_points.len() > 0 {
             depth_start -= level_len;
             start = start_points.pop().unwrap();
-            index = if index_points.pop().unwrap() {self.bitmap.select_1(index + self.bitmap.rank_1(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0} + 1).unwrap()}
-            else {self.bitmap.select_0(index + self.bitmap.rank_0(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0} + 1).unwrap()} - depth_start - start;
+            index =
+            if index_points.pop().unwrap() {self.bitmap.select_1(index + self.bitmap.rank_1(depth_start + start).unwrap() + if self.bitmap.get(depth_start + start) {0} else {1}).unwrap()}
+            else {self.bitmap.select_0(index + self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {0} else {1}).unwrap()} - depth_start - start;
         }
 
         return Option::Some(index);
@@ -339,29 +344,29 @@ impl <T: PartialOrd + Clone> super::WaveletTree<T> for PointerlessWaveletTree<T>
         let level_len = self.bitmap.bits().len() / (log as u64);
         let mut depth_start = 0;
         let mut start = 0;
+        let mut mid;
         let mut end = level_len - 1;
         let mut start_index = 0;
+        let mut mid_index;
         let mut end_index = partition.len();
         while (end_index - start_index) > 1 {
+            mid = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
+            mid_index = (start_index + end_index) / 2;
             if self.bitmap.get(depth_start + start + index) {
                 if index > 0 {index = self.bitmap.rank_1(depth_start + start + index).unwrap() - self.bitmap.rank_1(depth_start + start).unwrap() - if !self.bitmap.get(depth_start + start) {1} else {0};}
-                start = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() + if !self.bitmap.get(depth_start + start) {1} else {0};
-                start_index = (start_index + end_index) / 2;
+                start = mid;
+                start_index = mid_index;
             } else {
                 if index > 0 {index = self.bitmap.rank_0(depth_start + start + index).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};}
-                end = start + self.bitmap.rank_0(depth_start + end).unwrap() - self.bitmap.rank_0(depth_start + start).unwrap() - if self.bitmap.get(depth_start + start) {1} else {0};
-                end_index = (start_index + end_index) / 2;
+                end = mid - 1;
+                end_index = mid_index;
             }
             depth_start += level_len;
         }
 
         // Returns Result for last Layer
-        if partition[start_index] {
-            if self.bitmap.get(depth_start + start + index) {
-                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)+1]);
-            } else {
-                return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
-            }
+        if partition[start_index] && self.bitmap.get(depth_start + start + index) {
+            return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)+1]);
         } else {
             return Option::Some(&self.alphabet[Self::partition_sum(&partition, start_index)]);
         }
@@ -547,7 +552,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_pointerless_randomized_access_rank_select() {
-        // Time Nedded ~ 5-10 min
+        // Time Nedded ~ 10-15 min
         PointerlessWaveletTree::from_slice(&Vec::<u64>::new());
         let mut sequence: Vec<u64> = Vec::new();
         sequence.push(1);
@@ -587,9 +592,11 @@ mod tests {
                 let mut index = 0;
                 for j in 1..count+1 {
                     for k in index..numbers.len() {if numbers[k] != symbol {index += 1;} else {break;}}
-                    //assert_eq!(index as u64, tree.select(&symbol, j as u64).unwrap());
+                    assert_eq!(index as u64, tree.select(&symbol, j as u64).unwrap());
                     index += 1;
                 };
+                // Test Select Invalid
+                for j in count+1..count+256 {assert_eq!(Option::None, tree.select(&symbol, j as u64))}
             }
         }
     }
