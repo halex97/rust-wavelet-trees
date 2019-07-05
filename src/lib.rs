@@ -51,7 +51,7 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
         // If the given index is larger than the size of the bitmap (i.e. if it is larger than the amout of symbols in
         // the sequence), no result can be returned.
         // Otherwise the select() function of WaveletTreeNode is being called    
-        if i as u64 >= self.root.bitmap.bits().len() {
+        if i as u64 > self.root.bitmap.bits().len() {
             None
         }
 
@@ -61,7 +61,7 @@ impl <T: PartialOrd + Clone> PointerWaveletTree<T> {
              // Find the index of q in the alphabet
             let q_index : Option<usize> = self.alphabet.iter().position(|x| x == &q);
             
-            self.root.select( q_index.unwrap() as u64, i, 0, self.alphabet.len() as usize)
+            q_index.and_then(|q| self.root.select( q as u64, i, 0, self.alphabet.len() as usize))
            
           // If q could not be found in the alphabet, return None. Otherwise, return select_c(i).
          //q_index.and_then(|qi| self.root.select(qi as u64, i, 0, self.alphabet.len() as usize))
@@ -161,14 +161,33 @@ impl WaveletTreeNode {
      let btmp = &self.bitmap; 
      let middle = (a+b)/2;
      
-              if q_index > middle as u64 {
-                   self.right_child.as_ref().and_then(|child| child.select(q_index, btmp.select_1(i).unwrap() - 1, middle as usize, b))
+              if q_index >= middle as u64 {
+                  let new_a = middle as usize;
+                  let new_b = b;
+
+                  if (new_b-new_a <= 1) {
+                      Some(i-1)
+                  } else {
+                    self.right_child.as_ref()
+                    .and_then(|child| child.select(q_index, i, new_a, new_b))
+                    .and_then(|p| self.bitmap.select_1(p+1)) // p : position of the i-th q in the right subtree
+                  }
+
+                   
+              } else { 
+                let new_a = a;
+                  let new_b = middle as usize;
+
+                  if (new_b-new_a <= 1) {
+                      Some(i-1)
+                  } else {
+                      self.left_child.as_ref()
+                        .and_then(|child| child.select(q_index, i, new_a, new_b)) 
+                        .and_then(|p| self.bitmap.select_0(p+1))
+                  }
+
+                  
               }
-             
-              else if q_index < middle as u64 { 
-                  self.left_child.as_ref().and_then(|child| child.select(q_index, btmp.select_0(i).unwrap() - 1, a, middle as usize)) 
-              }
-             else{ Some(middle as u64)  }
            
     }
     
@@ -355,6 +374,15 @@ mod tests {
         let sequence : &Vec<char> = &text.chars().collect();
 
         let tree = PointerWaveletTree::from_sequence(sequence);
+
+        println!("{:?}", tree.select('a', 1));
+        println!("{:?}", tree.select('a', 2));
+        println!("{:?}", tree.select('a', 3));
+        println!("{:?}", tree.select('a', 4));
+        println!("-----");
+        println!("{:?}", tree.select('l', 1));
+        println!("{:?}", tree.select('b', 1));
+        println!("{:?}", tree.select('r', 1));
 
 
 
