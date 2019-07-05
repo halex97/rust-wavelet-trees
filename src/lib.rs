@@ -158,37 +158,31 @@ impl WaveletTreeNode {
     fn select (&self, q_index: u64, i: u64, a: usize, b: usize) -> Option<u64> {
      //If the leaf is the leftchild of its parent v,then the position i´ corresponding to 
      //i at v is the i-th occurrence of a 0 initsbitmap Bv.
-     let btmp = &self.bitmap; 
-     let middle = (a+b)/2;
-     
-              if q_index >= middle as u64 {
-                  let new_a = middle as usize;
-                  let new_b = b;
+    let middle = (a+b)/2;
+    
+        if q_index >= middle as u64 {
+            let new_a = middle as usize;
+            let new_b = b;
 
-                  if (new_b-new_a <= 1) {
-                      Some(i-1)
-                  } else {
-                    self.right_child.as_ref()
-                    .and_then(|child| child.select(q_index, i, new_a, new_b))
-                    .and_then(|p| self.bitmap.select_1(p+1)) // p : position of the i-th q in the right subtree
-                  }
+            if (new_b-new_a) <= 1 {
+                self.bitmap.select_1(i)
+            } else {
+              self.right_child.as_ref()
+              .and_then(|child| child.select(q_index, i, new_a, new_b))
+              .and_then(|p| self.bitmap.select_1(p+1)) // p : position of the i-th q in the right subtree
+            }
+        } else { 
+            let new_a = a;
+            let new_b = middle as usize;
 
-                   
-              } else { 
-                let new_a = a;
-                  let new_b = middle as usize;
-
-                  if (new_b-new_a <= 1) {
-                      Some(i-1)
-                  } else {
-                      self.left_child.as_ref()
-                        .and_then(|child| child.select(q_index, i, new_a, new_b)) 
-                        .and_then(|p| self.bitmap.select_0(p+1))
-                  }
-
-                  
-              }
-           
+            if (new_b-new_a) <= 1 {
+                self.bitmap.select_0(i)
+            } else {
+                self.left_child.as_ref()
+                  .and_then(|child| child.select(q_index, i, new_a, new_b)) 
+                  .and_then(|p| self.bitmap.select_0(p+1))
+            }
+        }
     }
     
 
