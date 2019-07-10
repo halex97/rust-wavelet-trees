@@ -116,24 +116,21 @@ impl GraphWaveletTree {
     /// Returns a vector containing all indices of the neighbors (successors) of the node given by
     /// index v. If v has no neighbors, an empty vector is returned.
     pub fn neighbors(&self, v: usize) -> Vec<usize> {
-        // Find the start of the adjacency list in the sequence (see access_neighbor for details)
-        let start = self.bitmap.select_1(v as u64)
-            .map(|l| l - (v-1) as u64)
-            .unwrap();
+        // Find the start and end of the adjacency list in the sequence (see access_neighbor for details)
+        let l = self.bitmap.select_1((v+1) as u64)
+            .map(|x| x - v as u64);
 
-        // Find the end of the adjacency list (i.e. usually the start of the next adjacency list).
-        // If v is the last node, the adjaceny list ends at the end of the sequence.
-        let end = self.bitmap.select_1(v as u64 +1)
-            .map(|l| l - v as u64)
+        let m = self.bitmap.select_1((v+2) as u64)
+            .map(|l| l - (v+1) as u64)
             .unwrap_or(self.sequence_length());
 
         // Compute how many neighbors v has.
-        let num_neighbors = (end - start) as usize;
+        let num_neighbors = l.map(|l| (m-l) as usize).unwrap_or(0);
 
         // Fill a vector with all indices of v's neighbors.
         let mut neighbors : Vec<usize> = Vec::with_capacity(num_neighbors);
 
-        for i in 1..num_neighbors {
+        for i in 1..num_neighbors+1 {
             neighbors.push(self.access_neighbor(v, i).unwrap());
         }
 
