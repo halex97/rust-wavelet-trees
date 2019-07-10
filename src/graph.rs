@@ -141,12 +141,12 @@ impl GraphWaveletTree {
     /// index v. If v has no reverse neighbors, an empty vector is returned.
     pub fn reverse_neighbors(&self, v: usize) -> Vec<usize> {
         // Get the number of occurences of v in the sequence. This is equal to the amount of v's reverse neighbors.
-        let num_v = self.tree.rank(&v, self.sequence_length()).unwrap_or(0) as usize;
+        let num_v = self.tree.rank(&v, self.sequence_length()-1).unwrap_or(0) as usize;
 
         // Fill a vector with all indices of v's reverse neighbors.
         let mut reverse_neighbors : Vec<usize> = Vec::with_capacity(num_v);
 
-        for i in 1..num_v {
+        for i in 1..num_v+1 {
             reverse_neighbors.push(self.access_reverse_neighbor(v, i).unwrap());
         }
 
@@ -295,6 +295,13 @@ mod tests {
     #[test]
     fn test_reverse_neighbors() {
         let gwt = GraphWaveletTree::from_graph(example_graph());
+
+        print!("Sequence: ");
+        for i in 0..8 {
+            print!("{:?}", gwt.tree.access(i).unwrap());
+        }
+        println!("\nTree: {:?}", gwt.tree);
+
 
         let mut n = gwt.reverse_neighbors(0); n.sort();
         assert_eq!(vec![1, 4], n);
