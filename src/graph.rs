@@ -68,19 +68,33 @@ impl GraphWaveletTree {
         }
     }
 
-    /// Access the i-th neighbour (i.e. successor) of node v
+    /// Access the i-th neighbour (i.e. successor) of the node given by index v
     pub fn access_neighbor(&self, v: usize, i: usize) -> Option<usize> {
-        // First we need to find the start of the adjacency list.
+        // First we need to find the start of the adjacency list l.
         // Then we need to take into account that the bitmap is longer than the actual sequence
         // because of the additional '1's.
+        let l = self.bitmap.select_1((v+1) as u64)
+            .map(|x| x - v as u64);
+        
         // Finally we can add the index i to find the correct neighbor's index in the sequence of
         // concatenated adjacency lists.
-        let n = self.bitmap.select_1(v as u64)
-            .map(|l| l - (v-1) as u64)
-            .map(|l| l + i as u64);
+        let n = l.map(|l| l + (i-1) as u64);
 
-        // Now we can look for the correct node index in the wavelet tree.
-        n.and_then(|x| self.tree.access(x)).map(|x| x.clone())
+        // Now we look for the end of adjacency list. This is either the start of the next 
+        // adjacency list or the end of the list of all concatenated adjacency lists.
+        let m = self.bitmap.select_1((v+2) as u64)
+            .map(|l| l - (v+1) as u64)
+            .unwrap_or(self.sequence_length());
+
+        //println!("Adjacency list: [{:?}, {:?}]. n: {:?}", l, m, n);
+
+        // If n is no actual index inside the correct adjacency list, no neighbor can be returned.
+        // Otherwise, we can look for the neighbor's node index in the wavelet tree.
+        if n.is_none() || n.unwrap() >= m {
+            None
+        } else {
+            n.and_then(|x| self.tree.access(x)).map(|x| x.clone())
+        }        
     }
 
     /// Access the i-th reverse neighbor (i.e. predecessor) of node v
