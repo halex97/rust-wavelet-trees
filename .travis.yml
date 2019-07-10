@@ -11,4 +11,4 @@ cache: cargo
 script:
   - cargo build --verbose --all
   - cargo test
-  - cargo test -- --ignored
+  - travis_wait cargo test -- --ignored
