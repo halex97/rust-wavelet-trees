@@ -103,13 +103,14 @@ impl GraphWaveletTree {
         // lists, which is represented by the wavelet tree.
         let p = self.tree.select(&v, i as u64);
 
-        // Then we need to find the p-th occurence of a '0' in the bitmap. This corresponds ot the
+        // Then we need to find the (p+1)-th occurence of a '0' in the bitmap. This corresponds to the
         // position of v in the bitmap representing the concatenated adjacency lists.
-        let p0 = p.and_then(|x| self.bitmap.select_0(x));
+        let p0 = p.and_then(|x| self.bitmap.select_0(x+1));
 
         // Now we can count the number of '1's up until position p0 in order to find out which
         // adjacency list the i-th occurence of v is in.
-        p0.and_then(|x| self.bitmap.rank_1(x)).map(|x| x as usize)
+        // Remember that we need to subtract 1 because we are returning an index.
+        p0.and_then(|x| self.bitmap.rank_1(x)).map(|x| (x-1) as usize)
     }
 
     /// Returns a vector containing all indices of the neighbors (successors) of the node given by
