@@ -7,5 +7,6 @@ edition = "2018"
 [dependencies]
 bio = "0.28.2"
 bv = "0.10.0"
+petgraph = "0.4.13"
 rand = "0.7.0"
 serde = { version = "1.0", features = ["derive"] }

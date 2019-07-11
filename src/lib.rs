@@ -1,5 +1,6 @@
 pub mod pointers;
 pub mod pointerless;
+pub mod graph;
 
 pub trait WaveletTree<T> {
     fn from_iterator(sequence: &mut dyn std::iter::Iterator<Item=T>) -> Self;
